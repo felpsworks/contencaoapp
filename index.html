@@ -113,6 +113,7 @@
   .oc-card-nc{font-weight:800;font-size:14px;}
   .oc-card-desc{font-size:12.5px;color:var(--gray-700);margin-bottom:10px;line-height:1.4;}
   .oc-card-meta{font-size:11px;color:var(--gray-500);margin-bottom:12px;}
+  .timer-badge{font-size:12px;font-weight:800;color:var(--alert);font-variant-numeric:tabular-nums;white-space:nowrap;}
   .oc-progress{background:var(--gray-100);border-radius:5px;height:8px;overflow:hidden;margin-bottom:6px;}
   .oc-progress-fill{height:100%;background:linear-gradient(90deg,var(--steel) 0%,var(--red) 100%);border-radius:5px;transition:width .4s ease;}
   .oc-totais{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:12px 0;text-align:center;}
@@ -273,7 +274,7 @@
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>NC</th><th>Cliente</th><th>Descrição</th><th>Fornecedor</th><th>Abertura</th><th>Status</th><th>Último apont.</th><th></th></tr></thead>
+            <thead><tr><th>NC</th><th>Cliente</th><th>PN MRHB</th><th>PN Cliente</th><th>Autorizado por</th><th>Descrição</th><th>Fornecedor</th><th>Abertura</th><th>Status</th><th>Último apont.</th><th></th></tr></thead>
             <tbody id="oc-admin-tbody"></tbody>
           </table>
         </div>
@@ -297,6 +298,160 @@
           <button class="btn btn-secondary btn-auto" onclick="adicionarCliente()">Adicionar</button>
         </div>
         <div id="clientes-admin-lista" style="margin-top:12px;"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">
+          <span>Catálogo de Peças (PN MRHB × PN Cliente)</span>
+          <span id="pn-catalogo-contagem" style="font-size:11px;color:var(--gray-500);font-weight:600;"></span>
+        </div>
+        <p style="font-size:11.5px;color:var(--gray-500);margin-bottom:10px;">Usado para preencher sozinho o PN do cliente e o "Autorizado por" ao abrir uma ocorrência. Cole uma peça por linha (PN MRHB, Cliente, PN Cliente, Responsável — separados por tab, vírgula ou ponto e vírgula) e clique em Importar.</p>
+        <textarea id="pn-bulk" rows="6" style="width:100%;font-family:monospace;font-size:12px;padding:10px;border:1.5px solid var(--gray-300);border-radius:5px;background:var(--gray-100);">2569	AAM	40117315	Felipe Faria
+2488	EATON	3002122	Felipe Faria
+2498	EATON	3002291	Felipe Faria
+2499	EATON	3002293	Felipe Faria
+2587	EATON	3003566	Felipe Faria
+2591	EATON	3003838	Felipe Faria
+2617	EATON	3003918	Felipe Faria
+2618	EATON	3003965	Felipe Faria
+2628	EATON	3004047	Felipe Faria
+2591	EATON	3004047	Felipe Faria
+2630	EATON	3004107	Felipe Faria
+2644	EATON	3004371	Felipe Faria
+2648	EATON	3004396	Felipe Faria
+2748	EATON	3004987	Felipe Faria
+2436	EATON	3315760	Felipe Faria
+2020	EATON	3316750	Felipe Faria
+2501	EATON	3317614	Felipe Faria
+2283	EATON	3317955	Felipe Faria
+2512	EATON	3317973	Felipe Faria
+2042	EATON	3341249	Felipe Faria
+2514	EATON	3341249	Felipe Faria
+2057	EATON	3341273	Felipe Faria
+2516	EATON	3341273	Felipe Faria
+2043	EATON	3341391	Felipe Faria
+2327	EATON	3342295	Felipe Faria
+2218	EATON	3342461	Felipe Faria
+2319	EATON	3342462	Felipe Faria
+2341	EATON	3343699	Felipe Faria
+2500	EATON	3343841	Felipe Faria
+2528	EATON	3343917	Felipe Faria
+2505	EATON	3344337	Felipe Faria
+2506	EATON	3344358	Felipe Faria
+2507	EATON	3344375	Felipe Faria
+2508	EATON	3344410	Felipe Faria
+2043	EATON	3344436	Felipe Faria
+2504	EATON	3344512	Felipe Faria
+2515	EATON	3344512	Felipe Faria
+2509	EATON	3344514	Felipe Faria
+2510	EATON	3344662	Felipe Faria
+2475	EATON	3344717	Felipe Faria
+2517	EATON	3344717	Felipe Faria
+2511	EATON	3344745	Felipe Faria
+2485	EATON	3344792	Felipe Faria
+2518	EATON	3344792	Felipe Faria
+2486	EATON	3344809	Felipe Faria
+2519	EATON	3344809	Felipe Faria
+2570	EATON	3344872	Felipe Faria
+2390	EATON	3348584	Felipe Faria
+2391	EATON	3348598	Felipe Faria
+2479	EATON	3348598	Felipe Faria
+2392	EATON	3348602	Felipe Faria
+2393	EATON	3348607	Felipe Faria
+2367	EATON	3348679	Felipe Faria
+2626	EATON	3348679	Felipe Faria
+2513	EATON	3348688	Felipe Faria
+2366	EATON	3348708	Felipe Faria
+2394	EATON	3348751	Felipe Faria
+2395	EATON	3348760	Felipe Faria
+2496	EATON	3348760	Felipe Faria
+2397	EATON	3348766	Felipe Faria
+2396	EATON	3348773	Felipe Faria
+2365	EATON	3348791	Felipe Faria
+2476	EATON	3348913	Felipe Faria
+2477	EATON	3348921	Felipe Faria
+2572	EATON	3361313	Felipe Faria
+2599	EATON	3361349	Felipe Faria
+2523	EATON	3362085	Felipe Faria
+2524	EATON	3362099	Felipe Faria
+2525	EATON	3362116	Felipe Faria
+2557	EATON	3362161	Felipe Faria
+2552	EATON	3362163	Felipe Faria
+2629	EATON	3362165	Felipe Faria
+2556	EATON	3362171	Felipe Faria
+2655	EATON	3363366	Felipe Faria
+2643	EATON	3363421	Felipe Faria
+2641	EATON	3363423	Felipe Faria
+2656	EATON	3363500	Felipe Faria
+2660	EATON	3364086	Felipe Faria
+2685	EATON	3364439	Felipe Faria
+2662	EATON	3364088	Felipe Faria
+2686	EATON	3364435	Felipe Faria
+2687	Eaton	3364090	Felipe Faria
+2663	EATON	3364093	Felipe Faria
+2661	EATON	3364223	Felipe Faria
+2668	EATON	3364224	Felipe Faria
+2669	EATON	3364225	Felipe Faria
+2670	EATON	3364301	Felipe Faria
+2667	EATON	3364320	Felipe Faria
+2671	EATON	3364329	Felipe Faria
+2555	EATON	3363421	Felipe Faria
+2643	EATON	3364421	Felipe Faria
+2457	EATON	4300342	Felipe Faria
+2647	EATON	4308536	Felipe Faria
+2459	EATON	A-6534	Felipe Faria
+2434	EATON	A-6535	Felipe Faria
+2446	EATON	A-6536	Felipe Faria
+2445	EATON	A-6537	Felipe Faria
+2435	EATON	A-6538	Felipe Faria
+2455	EATON	A-6539	Felipe Faria
+2440	EATON	A-6540	Felipe Faria
+2439	EATON	A-6541	Felipe Faria
+2444	EATON	A-6744	Felipe Faria
+2443	EATON	A-6974	Felipe Faria
+2438	EATON	A-6975	Felipe Faria
+2458	EATON	A-7053	Felipe Faria
+2442	EATON	A-7342	Felipe Faria
+2494	EATON	A-7720	Felipe Faria
+2493	EATON	A-7721	Felipe Faria
+2348	GM	93283244	Felipe Faria
+2586	GM	24577725	Felipe Faria
+2581	GM	24580989	Felipe Faria
+2681	GM	24580989	Felipe Faria
+2573	GM	94713809	Felipe Faria
+2574	GM	94713810	Felipe Faria
+2575	GM	94713811	Felipe Faria
+2619	GM	24579728	Felipe Faria
+2621	GM	24580288	Felipe Faria
+2642	GM	24581397	Felipe Faria
+2742	GM	24581397	Felipe Faria
+2704	GM	24592782	Felipe Faria
+2718	EATON	3365513	Felipe Faria
+2564	ZF	1361206239	Felipe Faria
+2565	ZF	1361206237	Felipe Faria
+2566	ZF	1361206231	Felipe Faria
+2567	ZF	1361206081	Felipe Faria
+2632	ZF	1361301075	Felipe Faria
+2633	ZF	1361301076	Felipe Faria
+2683	ZF	1369301087	Felipe Faria
+2492	EATON	A-7722	Felipe Faria
+2526	EATON	A-7858	Felipe Faria
+2531	EATON	A-7859	Felipe Faria
+2682	ZF	1369301082	Felipe Faria
+2649	EATON	A-8723	Felipe Faria
+2478	AAM	40035736	Felipe Faria
+2772	ZF	1369301081	Felipe Faria
+2723	EATON	3006419	Felipe Faria</textarea>
+        <div style="display:flex;gap:10px;margin-top:10px;align-items:center;">
+          <button class="btn btn-primary btn-auto" id="pn-btn-importar" onclick="importarPnCatalogo()">Importar lista</button>
+          <span id="pn-bulk-msg" style="font-size:12px;color:var(--green);display:none;"></span>
+        </div>
+        <div class="field-error" id="pn-bulk-error" style="margin-top:8px;"></div>
+        <div class="table-wrap" style="margin-top:16px;max-height:320px;overflow-y:auto;">
+          <table>
+            <thead><tr><th>PN MRHB</th><th>Cliente</th><th>PN Cliente</th><th>Responsável</th><th></th></tr></thead>
+            <tbody id="pn-catalogo-tbody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -348,6 +503,18 @@
       <div class="form-group"><label>Nº da NC <span style="color:var(--alert)">*</span></label><input type="text" id="no-nc" placeholder="Ex: NC-2026-0170"></div>
       <div class="form-group"><label>Cliente <span style="color:var(--alert)">*</span></label><select id="no-cliente"></select></div>
     </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Nº peça MRHB</label>
+        <input type="text" id="no-pn-mrhb" placeholder="Ex: 2569" oninput="onPnMrhbInput()">
+      </div>
+      <div class="form-group">
+        <label>Nº peça Cliente</label>
+        <input type="text" id="no-pn-cliente" placeholder="Preenche sozinho ao digitar o PN MRHB">
+      </div>
+    </div>
+    <div id="no-pn-opcoes" style="display:none;margin:-10px 0 14px;"></div>
+    <div class="field-hint" id="no-pn-hint" style="display:none"></div>
     <div class="form-group"><label>Descrição da não conformidade <span style="color:var(--alert)">*</span></label><textarea id="no-desc" rows="2"></textarea></div>
     <div class="form-group"><label>Responsável pela contenção <span style="color:var(--alert)">*</span></label><select id="no-fornecedor"></select></div>
     <div class="field-error" id="no-error"></div>
@@ -424,6 +591,7 @@ let currentUser = null; // {uid, nome, perfil}
 let clientesCache = [];
 let fornecedoresCache = [];
 let usuariosCache = [];
+let pnClientesCache = [];
 let minhasOcorrenciasCache = [];
 let meusApontamentosCache = [];
 let ocorrenciasAdminCache = [];
@@ -569,8 +737,30 @@ function totaisDaOcorrencia(ocId, apontamentos){
     inspecionada: t.inspecionada + (a.inspecionada || 0),
     ok: t.ok + (a.ok || 0),
     nok: t.nok + (a.nok || 0),
-    ultimoApontamento: (!t.ultimoApontamento || (a.dataHora && a.dataHora.toMillis && a.dataHora.toMillis() > t.ultimoApontamento.toMillis())) ? a.dataHora : t.ultimoApontamento
-  }), { suspeita: 0, inspecionada: 0, ok: 0, nok: 0, ultimoApontamento: null });
+    ultimoApontamento: (!t.ultimoApontamento || (a.dataHora && a.dataHora.toMillis && a.dataHora.toMillis() > t.ultimoApontamento.toMillis())) ? a.dataHora : t.ultimoApontamento,
+    primeiroApontamento: (!t.primeiroApontamento || (a.dataHora && a.dataHora.toMillis && a.dataHora.toMillis() < t.primeiroApontamento.toMillis())) ? a.dataHora : t.primeiroApontamento
+  }), { suspeita: 0, inspecionada: 0, ok: 0, nok: 0, ultimoApontamento: null, primeiroApontamento: null });
+}
+function fmtDuracao(ms){
+  if (ms < 0) ms = 0;
+  const totalSeg = Math.floor(ms / 1000);
+  const dias = Math.floor(totalSeg / 86400);
+  const horas = Math.floor((totalSeg % 86400) / 3600);
+  const min = Math.floor((totalSeg % 3600) / 60);
+  const seg = totalSeg % 60;
+  const pad = n => String(n).padStart(2, '0');
+  return (dias > 0 ? dias + 'd ' : '') + `${pad(horas)}:${pad(min)}:${pad(seg)}`;
+}
+// Atualiza os cronômetros a cada segundo sem precisar re-renderizar os
+// cards inteiros (evita piscar a tela e perder o que o usuário está digitando).
+let timerInterval = null;
+function garantirTimerRodando(){
+  if (timerInterval) return;
+  timerInterval = setInterval(() => {
+    document.querySelectorAll('.timer-badge[data-inicio]').forEach(el => {
+      el.textContent = fmtDuracao(Date.now() - Number(el.dataset.inicio));
+    });
+  }, 1000);
 }
 
 // ══════════════════════════ MINHAS CONTENÇÕES ══════════════════════════
@@ -584,13 +774,19 @@ function renderMinhas(){
     const pct = t.suspeita > 0 ? Math.min(100, Math.round(t.inspecionada / t.suspeita * 100)) : 0;
     const horas = horasDesdeTs(t.ultimoApontamento);
     const parada = horas === null || horas > 4;
+    const inicioTs = t.primeiroApontamento || o.dataAbertura;
+    const inicioMs = inicioTs && inicioTs.toMillis ? inicioTs.toMillis() : Date.now();
     return `<div class="oc-card ${parada ? 'parada' : ''}">
       <div class="oc-card-top">
         <div>
-          <div class="oc-card-nc">${o.nc}</div>
-          <div style="font-size:11px;color:var(--gray-500);">${o.cliente}</div>
+          <div class="oc-card-nc">${o.nc}${o.pnMrhb ? ` · PN ${o.pnMrhb}` : ''}</div>
+          <div style="font-size:11px;color:var(--gray-500);">${o.cliente}${o.pnCliente ? ` · Cliente: ${o.pnCliente}` : ''}</div>
+          ${o.responsavel ? `<div style="font-size:11px;color:var(--gray-500);">Autorizado por: ${o.responsavel}</div>` : ''}
         </div>
-        ${parada ? '<span class="badge badge-red">Sem apontamento +4h</span>' : '<span class="badge badge-yellow">Em andamento</span>'}
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
+          ${parada ? '<span class="badge badge-red">Sem apontamento +4h</span>' : '<span class="badge badge-yellow">Em andamento</span>'}
+          <span class="timer-badge" data-inicio="${inicioMs}">${fmtDuracao(Date.now() - inicioMs)}</span>
+        </div>
       </div>
       <div class="oc-card-desc">${o.descricao}</div>
       <div class="oc-progress"><div class="oc-progress-fill" style="width:${pct}%"></div></div>
@@ -601,9 +797,10 @@ function renderMinhas(){
         <div><b style="color:var(--green)">${t.ok}</b><span>OK</span></div>
         <div><b style="color:var(--alert)">${t.nok}</b><span>NOK</span></div>
       </div>
-      <button class="btn btn-primary btn-block" onclick="openModalApontamento('${o.id}')">+ Registrar Apontamento</button>
+      <button class="btn btn-primary btn-block" onclick="openModalApontamento('${o.id}')">${t.inspecionada > 0 ? '🔄 Atualizar Apontamento' : '+ Registrar Apontamento'}</button>
     </div>`;
   }).join('');
+  garantirTimerRodando();
 }
 
 function openModalApontamento(ocId){
@@ -611,6 +808,7 @@ function openModalApontamento(ocId){
   if (!o) return;
   const t = totaisDaOcorrencia(o.id, meusApontamentosCache);
   document.getElementById('modal-apontamento').dataset.ocId = ocId;
+  document.getElementById('modal-apontamento').querySelector('h2').textContent = t.inspecionada > 0 ? 'Atualizar Apontamento' : 'Registrar Apontamento';
   document.getElementById('ap-oc-info').textContent = `${o.nc} — ${o.cliente}`;
   document.getElementById('ap-oc-detalhe').innerHTML = `
     <div><span>Suspeita (total)</span>${t.suspeita}</div>
@@ -747,7 +945,7 @@ function renderOcorrenciasAdmin(){
     const t = totaisDaOcorrencia(o.id, apontamentosAdminCache);
     const statusBadge = o.status === 'aberta' ? '<span class="badge badge-yellow">Aberta</span>' : '<span class="badge badge-green">Encerrada</span>';
     return `<tr>
-      <td>${o.nc}</td><td>${o.cliente}</td><td>${o.descricao}</td><td>${forn ? forn.nome : '—'}</td>
+      <td>${o.nc}</td><td>${o.cliente}</td><td>${o.pnMrhb || '—'}</td><td>${o.pnCliente || '—'}</td><td>${o.responsavel || '—'}</td><td>${o.descricao}</td><td>${forn ? forn.nome : '—'}</td>
       <td>${fmtData(o.dataAbertura)}</td><td>${statusBadge}</td><td>${t.ultimoApontamento ? fmtDataHora(t.ultimoApontamento) : '—'}</td>
       <td>${o.status === 'aberta' ? `<button class="btn btn-secondary btn-sm" onclick="openModalEncerrar('${o.id}')">Encerrar</button>` : ''}</td>
     </tr>`;
@@ -756,8 +954,49 @@ function renderOcorrenciasAdmin(){
 function openModalNovaOcorrencia(){
   document.getElementById('no-nc').value = '';
   document.getElementById('no-desc').value = '';
+  document.getElementById('no-pn-mrhb').value = '';
+  document.getElementById('no-pn-cliente').value = '';
+  document.getElementById('no-pn-hint').style.display = 'none';
+  document.getElementById('no-pn-opcoes').style.display = 'none';
+  document.getElementById('no-pn-opcoes').dataset.responsavel = '';
   document.getElementById('no-error').style.display = 'none';
   document.getElementById('modal-nova-ocorrencia').classList.add('open');
+}
+// Busca automática: ao digitar o PN MRHB, preenche PN Cliente + Cliente +
+// Autorizado por. Se o PN aparecer em mais de um registro do catálogo
+// (acontece em alguns casos no cadastro real), mostra as opções para
+// escolher em vez de adivinhar.
+function onPnMrhbInput(){
+  const pn = document.getElementById('no-pn-mrhb').value.trim();
+  const hint = document.getElementById('no-pn-hint');
+  const opcoesEl = document.getElementById('no-pn-opcoes');
+  opcoesEl.style.display = 'none';
+  opcoesEl.dataset.responsavel = '';
+  if (!pn) { document.getElementById('no-pn-cliente').value = ''; hint.style.display = 'none'; return; }
+  const matches = pnClientesCache.filter(p => p.pnMrhb === pn);
+  if (!matches.length) {
+    document.getElementById('no-pn-cliente').value = '';
+    hint.textContent = 'PN não encontrado no catálogo — preencha manualmente ou cadastre em Admin.';
+    hint.style.display = 'block';
+    return;
+  }
+  aplicarMatchPn(matches[0]);
+  if (matches.length > 1) {
+    hint.textContent = `Esse PN tem ${matches.length} registros no catálogo — escolha o correto:`;
+    hint.style.display = 'block';
+    opcoesEl.style.display = 'block';
+    opcoesEl.innerHTML = matches.map((m, i) => `<button type="button" class="btn btn-secondary btn-sm" style="margin:2px 4px 2px 0;" onclick='aplicarMatchPn(${JSON.stringify(m)})'>${m.cliente} · ${m.pnCliente}</button>`).join('');
+  } else {
+    hint.textContent = `Autorizado por: ${matches[0].responsavel || '—'}`;
+    hint.style.display = 'block';
+  }
+}
+function aplicarMatchPn(m){
+  document.getElementById('no-pn-cliente').value = m.pnCliente;
+  document.getElementById('no-cliente').value = m.cliente;
+  document.getElementById('no-pn-opcoes').dataset.responsavel = m.responsavel || '';
+  document.getElementById('no-pn-hint').textContent = `Autorizado por: ${m.responsavel || '—'}`;
+  document.getElementById('no-pn-hint').style.display = 'block';
 }
 async function salvarOcorrencia(){
   const err = document.getElementById('no-error');
@@ -765,10 +1004,13 @@ async function salvarOcorrencia(){
   const cliente = document.getElementById('no-cliente').value;
   const descricao = document.getElementById('no-desc').value.trim();
   const usuarioId = document.getElementById('no-fornecedor').value;
+  const pnMrhb = document.getElementById('no-pn-mrhb').value.trim();
+  const pnCliente = document.getElementById('no-pn-cliente').value.trim();
+  const responsavel = document.getElementById('no-pn-opcoes').dataset.responsavel || '';
   if (!nc || !descricao || !usuarioId) { err.textContent = 'Preencha NC, descrição e responsável.'; err.style.display = 'block'; return; }
   err.style.display = 'none';
   try {
-    await db.collection('ocorrencias').add({ nc, cliente, descricao, dataAbertura: firebase.firestore.FieldValue.serverTimestamp(), usuarioId, status: 'aberta' });
+    await db.collection('ocorrencias').add({ nc, cliente, descricao, pnMrhb, pnCliente, responsavel, dataAbertura: firebase.firestore.FieldValue.serverTimestamp(), usuarioId, status: 'aberta' });
     closeModal('modal-nova-ocorrencia');
   } catch (e) {
     err.textContent = traduzErroFirebase(e); err.style.display = 'block';
@@ -789,6 +1031,7 @@ async function carregarUsuariosAdmin(){
 async function renderAdmin(){
   if (!currentUser || currentUser.perfil !== 'admin') return;
   await carregarUsuariosAdmin();
+  renderPnCatalogo();
   const el = document.getElementById('adm-usuarios-lista');
   el.innerHTML = usuariosCache.map(u => {
     const perfilLabel = u.perfil === 'admin' ? 'Administrador' : u.perfil === 'residente' ? 'Residente' : 'Fornecedor';
@@ -858,6 +1101,56 @@ async function adicionarCliente(){
   await renderAdmin();
 }
 
+// ══════════════════════════ CATÁLOGO DE PEÇAS (PN MRHB × PN Cliente) ══════════════════════════
+function renderPnCatalogo(){
+  document.getElementById('pn-catalogo-contagem').textContent = pnClientesCache.length + ' peças cadastradas';
+  const tbody = document.getElementById('pn-catalogo-tbody');
+  if (!pnClientesCache.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">Nenhuma peça cadastrada ainda.</td></tr>'; return; }
+  tbody.innerHTML = pnClientesCache.map(p => `<tr>
+      <td>${p.pnMrhb}</td><td>${p.cliente}</td><td>${p.pnCliente}</td><td>${p.responsavel || '—'}</td>
+      <td><button class="btn btn-secondary btn-sm" onclick="excluirPnCatalogo('${p.id}')">Excluir</button></td>
+    </tr>`).join('');
+}
+async function excluirPnCatalogo(id){
+  await db.collection('pnClientes').doc(id).delete();
+  await carregarListasApoio();
+  renderPnCatalogo();
+}
+async function importarPnCatalogo(){
+  const raw = document.getElementById('pn-bulk').value;
+  const msg = document.getElementById('pn-bulk-msg');
+  const err = document.getElementById('pn-bulk-error');
+  const btn = document.getElementById('pn-btn-importar');
+  msg.style.display = 'none'; err.style.display = 'none';
+  const linhas = raw.split('\n').map(l => l.trim()).filter(Boolean);
+  const registros = [];
+  for (const linha of linhas) {
+    const partes = linha.includes('\t') ? linha.split('\t') : linha.split(/;|,/);
+    if (partes.length < 3) continue;
+    const [pnMrhb, cliente, pnCliente, responsavel] = partes.map(p => (p || '').trim());
+    if (!pnMrhb || /^pn\s*mrhb/i.test(pnMrhb)) continue; // pula linha de cabeçalho se vier colada junto
+    if (pnClientesCache.some(p => p.pnMrhb === pnMrhb && p.pnCliente === pnCliente)) continue; // já importado
+    registros.push({ pnMrhb, cliente: cliente || '', pnCliente: pnCliente || '', responsavel: responsavel || '' });
+  }
+  if (!registros.length) { err.textContent = 'Nenhuma linha nova para importar (verifique o formato ou se já foi importada antes).'; err.style.display = 'block'; return; }
+  btn.disabled = true; btn.textContent = 'Importando...';
+  try {
+    for (let i = 0; i < registros.length; i += 400) {
+      const lote = db.batch();
+      registros.slice(i, i + 400).forEach(r => lote.set(db.collection('pnClientes').doc(), r));
+      await lote.commit();
+    }
+    msg.textContent = `${registros.length} peças importadas com sucesso.`;
+    msg.style.display = 'block';
+    await carregarListasApoio();
+    renderPnCatalogo();
+  } catch (e) {
+    err.textContent = traduzErroFirebase(e); err.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Importar lista';
+  }
+}
+
 // ══════════════════════════ LISTAS DE APOIO (selects) ══════════════════════════
 async function carregarListasApoio(){
   const snapCli = await db.collection('clientes').orderBy('nome').get();
@@ -874,6 +1167,9 @@ async function carregarListasApoio(){
     document.getElementById('h-fornecedor').innerHTML = '<option value="">Todos</option>' + fornOptions;
     document.getElementById('db-fornecedor').innerHTML = '<option value="">Todos</option>' + fornOptions;
     document.getElementById('no-fornecedor').innerHTML = fornOptions;
+
+    const snapPn = await db.collection('pnClientes').orderBy('pnMrhb').get();
+    pnClientesCache = snapPn.docs.map(d => ({ id: d.id, ...d.data() }));
   }
 }
 
