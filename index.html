@@ -813,10 +813,14 @@ function renderMinhas(){
   grid.innerHTML = ocs.map(o => {
     const t = totaisDaOcorrencia(o.id, meusApontamentosCache);
     const pct = t.suspeita > 0 ? Math.min(100, Math.round(t.inspecionada / t.suspeita * 100)) : 0;
+    const concluido = t.suspeita > 0 && t.inspecionada >= t.suspeita;
     const horas = horasDesdeTs(t.ultimoApontamento);
-    const parada = horas === null || horas > 4;
+    const parada = !concluido && (horas === null || horas > 4);
     const inicioTs = t.primeiroApontamento || o.dataAbertura;
     const inicioMs = inicioTs && inicioTs.toMillis ? inicioTs.toMillis() : Date.now();
+    let badge = '<span class="badge badge-yellow">Em andamento</span>';
+    if (concluido) badge = '<span class="badge badge-green">100% inspecionado</span>';
+    else if (parada) badge = '<span class="badge badge-red">Sem apontamento +4h</span>';
     return `<div class="oc-card ${parada ? 'parada' : ''}">
       <div class="oc-card-top">
         <div>
@@ -825,7 +829,7 @@ function renderMinhas(){
           ${o.responsavel ? `<div style="font-size:11px;color:var(--gray-500);">Autorizado por: ${o.responsavel}</div>` : ''}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
-          ${parada ? '<span class="badge badge-red">Sem apontamento +4h</span>' : '<span class="badge badge-yellow">Em andamento</span>'}
+          ${badge}
           <span class="timer-badge" data-inicio="${inicioMs}">${fmtDuracao(Date.now() - inicioMs)}</span>
         </div>
       </div>
@@ -839,7 +843,9 @@ function renderMinhas(){
         <div><b style="color:var(--alert)">${t.nok}</b><span>NOK</span></div>
       </div>
       ${meusApontamentosCache.some(a => a.ocorrenciaId === o.id) ? `<div class="timeline" style="max-height:130px;margin-bottom:10px;">${htmlTimelineApontamentos(ordenarApontamentosDesc(meusApontamentosCache.filter(a => a.ocorrenciaId === o.id)))}</div>` : ''}
-      <button class="btn btn-primary btn-block" onclick="openModalApontamento('${o.id}')">${t.inspecionada > 0 ? '🔄 Atualizar Apontamento' : '+ Registrar Apontamento'}</button>
+      ${concluido
+        ? '<button class="btn btn-secondary btn-block" disabled>✅ Concluído</button>'
+        : `<button class="btn btn-primary btn-block" onclick="openModalApontamento('${o.id}')">${t.inspecionada > 0 ? '🔄 Atualizar Apontamento' : '+ Registrar Apontamento'}</button>`}
     </div>`;
   }).join('');
   garantirTimerRodando();
@@ -852,11 +858,14 @@ function openModalApontamento(ocId){
   document.getElementById('modal-apontamento').dataset.ocId = ocId;
   document.getElementById('modal-apontamento').querySelector('h2').textContent = t.inspecionada > 0 ? 'Atualizar Apontamento' : 'Registrar Apontamento';
   document.getElementById('ap-oc-info').textContent = `${o.nc} — ${o.cliente}`;
+  const restante = Math.max(0, t.suspeita - t.inspecionada);
   document.getElementById('ap-oc-detalhe').innerHTML = `
     <div><span>Suspeita (total)</span>${t.suspeita}</div>
-    <div><span>Já inspecionado</span>${t.inspecionada}</div>`;
+    <div><span>Já inspecionado</span>${t.inspecionada}</div>
+    <div><span>Restante</span>${restante}</div>`;
   ['ap-peca', 'ap-suspeita', 'ap-inspecionada', 'ap-ok', 'ap-nok', 'ap-obs'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('ap-suspeita').value = t.suspeita || '';
+  document.getElementById('ap-inspecionada').max = restante;
 
   // Histórico desta contenção, mais recente primeiro — e reaproveita peça/tipo
   // do último apontamento pra não precisar redigitar toda vez.
@@ -885,6 +894,13 @@ async function salvarApontamento(){
   const nok = Number(document.getElementById('ap-nok').value) || 0;
   if (inspecionada <= 0 || ok + nok !== inspecionada) {
     err.textContent = 'OK + NOK deve ser igual à quantidade inspecionada.'; err.style.display = 'block'; return;
+  }
+  const t = totaisDaOcorrencia(ocorrenciaId, meusApontamentosCache);
+  const restante = t.suspeita - t.inspecionada;
+  if (inspecionada > restante) {
+    err.textContent = `A soma das quantidades inspecionadas não pode ultrapassar o total suspeito (restam ${restante} peça${restante === 1 ? '' : 's'}).`;
+    err.style.display = 'block';
+    return;
   }
   err.style.display = 'none';
   const btn = document.getElementById('ap-btn-salvar');
