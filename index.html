@@ -259,13 +259,15 @@
         <div class="kpi"><div class="kpi-label">Ocorrências Abertas</div><div class="kpi-value" id="d-abertas">0</div></div>
         <div class="kpi yellow"><div class="kpi-label">Peças Suspeitas (total)</div><div class="kpi-value" id="d-suspeita">0</div></div>
         <div class="kpi green"><div class="kpi-label">Peças Inspecionadas</div><div class="kpi-value" id="d-inspecionada">0</div><div class="kpi-sub" id="d-pct-insp">0% do total suspeito</div></div>
-        <div class="kpi red"><div class="kpi-label">Taxa de NOK</div><div class="kpi-value" id="d-taxa-nok">0%</div><div class="kpi-sub" id="d-nok-sub"></div></div>
+        <div class="kpi red"><div class="kpi-label">Peças Reprovadas (NOK)</div><div class="kpi-value" id="d-nok-total">0</div><div class="kpi-sub" id="d-taxa-nok-sub">0% das inspecionadas</div></div>
       </div>
 
       <div class="card" id="card-alertas">
         <div class="card-title">⚠ Contenções sem apontamento recente (+4h)</div>
         <div id="alertas-lista"></div>
       </div>
+
+      <div class="card"><div class="card-title">Peças: Suspeita × Inspecionada × Reprovada</div><div class="hbar-chart" id="hbar-resumo"></div></div>
 
       <div class="form-row">
         <div class="card"><div class="card-title">Progresso por Fornecedor / Residente</div><div class="hbar-chart" id="hbar-fornecedor"></div></div>
@@ -969,14 +971,15 @@ function renderDashboard(){
   document.getElementById('d-suspeita').textContent = totSuspeita;
   document.getElementById('d-inspecionada').textContent = totInsp;
   document.getElementById('d-pct-insp').textContent = fmtPct(totInsp, totSuspeita) + ' do total suspeito';
-  document.getElementById('d-taxa-nok').textContent = fmtPct(totNok, totInsp);
-  document.getElementById('d-nok-sub').textContent = totNok + (totNok === 1 ? ' peça NOK' : ' peças NOK');
+  document.getElementById('d-nok-total').textContent = totNok;
+  document.getElementById('d-taxa-nok-sub').textContent = fmtPct(totNok, totInsp) + ' das inspecionadas';
 
   const alertasEl = document.getElementById('alertas-lista');
   alertasEl.innerHTML = !alertas.length
     ? '<div class="empty" style="padding:16px;">Nenhuma contenção parada — tudo em dia.</div>'
     : alertas.map(a => `<div class="alert-item"><span><b>${a.nc}</b> — ${a.cliente} · ${a.fornecedor}</span><span class="alert-item-time">${a.horas == null ? 'sem apontamento ainda' : a.horas.toFixed(1) + 'h sem apontamento'}</span></div>`).join('');
 
+  renderHbar('hbar-resumo', { 'Suspeita': totSuspeita, 'Inspecionada': totInsp, 'Reprovada (NOK)': totNok });
   renderHbar('hbar-fornecedor', porFornecedor);
   renderHbar('hbar-cliente', porCliente);
 }
