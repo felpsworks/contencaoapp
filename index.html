@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Contenção CS1 — Terceiros e Residente</title>
+<title>Contenção App</title>
 <style>
   :root {
     --red:#1B3A5C;--red-dark:#0F2540;--red-light:#E8EEF4;
@@ -191,10 +191,9 @@
 <div class="screen" id="screen-app">
   <div class="header">
     <div class="header-brand">
-      <div class="header-logo">CS1</div>
+      <div class="header-logo">🔍</div>
       <div>
-        <div class="header-title">Contenção CS1</div>
-        <div class="header-sub" id="header-sub">Terceiros &amp; Residente</div>
+        <div class="header-title">Contenção App</div>
       </div>
     </div>
     <div class="header-right">
@@ -260,7 +259,7 @@
         <div class="kpi"><div class="kpi-label">Ocorrências Abertas</div><div class="kpi-value" id="d-abertas">0</div></div>
         <div class="kpi yellow"><div class="kpi-label">Peças Suspeitas (total)</div><div class="kpi-value" id="d-suspeita">0</div></div>
         <div class="kpi green"><div class="kpi-label">Peças Inspecionadas</div><div class="kpi-value" id="d-inspecionada">0</div><div class="kpi-sub" id="d-pct-insp">0% do total suspeito</div></div>
-        <div class="kpi red"><div class="kpi-label">Taxa de NOK</div><div class="kpi-value" id="d-taxa-nok">0%</div></div>
+        <div class="kpi red"><div class="kpi-label">Taxa de NOK</div><div class="kpi-value" id="d-taxa-nok">0%</div><div class="kpi-sub" id="d-nok-sub"></div></div>
       </div>
 
       <div class="card" id="card-alertas">
@@ -738,6 +737,26 @@ function fmtData(ts){
   const pad = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
+function fmtDataCurta(ts){
+  if (!ts) return '';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  const pad = n => String(n).padStart(2, '0');
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${String(d.getFullYear()).slice(-2)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function ordenarApontamentosDesc(lista){
+  return lista.slice().sort((a, b) => (b.dataHora && b.dataHora.toMillis ? b.dataHora.toMillis() : 0) - (a.dataHora && a.dataHora.toMillis ? a.dataHora.toMillis() : 0));
+}
+function htmlTimelineApontamentos(lista){
+  if (!lista.length) return '<div class="empty" style="padding:12px;">Nenhum apontamento registrado ainda.</div>';
+  return lista.map((a, i) => `
+    <div class="timeline-item">
+      <div class="timeline-dot ${i === lista.length - 1 ? 'first' : ''}"></div>
+      <div class="timeline-content">
+        <div class="timeline-time">${fmtDataCurta(a.dataHora)}</div>
+        <div class="timeline-meta">Insp: <b>${a.inspecionada}</b> · OK: <b style="color:var(--green)">${a.ok}</b> · NOK: <b style="color:var(--alert)">${a.nok}</b></div>
+      </div>
+    </div>`).join('');
+}
 function horasDesdeTs(ts){
   if (!ts) return null;
   const d = ts.toDate ? ts.toDate() : new Date(ts);
@@ -753,6 +772,13 @@ function totaisDaOcorrencia(ocId, apontamentos){
     ultimoApontamento: (!t.ultimoApontamento || (a.dataHora && a.dataHora.toMillis && a.dataHora.toMillis() > t.ultimoApontamento.toMillis())) ? a.dataHora : t.ultimoApontamento,
     primeiroApontamento: (!t.primeiroApontamento || (a.dataHora && a.dataHora.toMillis && a.dataHora.toMillis() < t.primeiroApontamento.toMillis())) ? a.dataHora : t.primeiroApontamento
   }), { suspeita: 0, inspecionada: 0, ok: 0, nok: 0, ultimoApontamento: null, primeiroApontamento: null });
+}
+// Arredondar sempre pra inteiro esconde percentuais pequenos (ex: 3 NOK em
+// 845 peças = 0,35%, virava "0%" e parecia que não tinha NOK nenhum).
+function fmtPct(num, den){
+  if (den <= 0 || num <= 0) return '0%';
+  const pct = num / den * 100;
+  return (pct < 1 ? pct.toFixed(1) : Math.round(pct)) + '%';
 }
 function fmtDuracao(ms){
   if (ms < 0) ms = 0;
@@ -810,6 +836,7 @@ function renderMinhas(){
         <div><b style="color:var(--green)">${t.ok}</b><span>OK</span></div>
         <div><b style="color:var(--alert)">${t.nok}</b><span>NOK</span></div>
       </div>
+      ${meusApontamentosCache.some(a => a.ocorrenciaId === o.id) ? `<div class="timeline" style="max-height:130px;margin-bottom:10px;">${htmlTimelineApontamentos(ordenarApontamentosDesc(meusApontamentosCache.filter(a => a.ocorrenciaId === o.id)))}</div>` : ''}
       <button class="btn btn-primary btn-block" onclick="openModalApontamento('${o.id}')">${t.inspecionada > 0 ? '🔄 Atualizar Apontamento' : '+ Registrar Apontamento'}</button>
     </div>`;
   }).join('');
@@ -831,8 +858,7 @@ function openModalApontamento(ocId){
 
   // Histórico desta contenção, mais recente primeiro — e reaproveita peça/tipo
   // do último apontamento pra não precisar redigitar toda vez.
-  const historicoOc = meusApontamentosCache.filter(a => a.ocorrenciaId === ocId)
-    .sort((a, b) => (b.dataHora && b.dataHora.toMillis ? b.dataHora.toMillis() : 0) - (a.dataHora && a.dataHora.toMillis ? a.dataHora.toMillis() : 0));
+  const historicoOc = ordenarApontamentosDesc(meusApontamentosCache.filter(a => a.ocorrenciaId === ocId));
   const ultimo = historicoOc[0];
   if (ultimo) {
     document.getElementById('ap-peca').value = ultimo.peca || '';
@@ -841,14 +867,7 @@ function openModalApontamento(ocId){
   const timelineWrap = document.getElementById('ap-timeline-wrap');
   if (historicoOc.length) {
     timelineWrap.style.display = 'block';
-    document.getElementById('ap-timeline').innerHTML = historicoOc.map((a, i) => `
-      <div class="timeline-item">
-        <div class="timeline-dot ${i === historicoOc.length - 1 ? 'first' : ''}"></div>
-        <div class="timeline-content">
-          <div class="timeline-time">${fmtDataHora(a.dataHora)}</div>
-          <div class="timeline-meta">${a.tipo || ''}${a.peca ? ' · Peça ' + a.peca : ''} — Insp: <b>${a.inspecionada}</b> · OK: <b style="color:var(--green)">${a.ok}</b> · NOK: <b style="color:var(--alert)">${a.nok}</b>${a.obs ? '<br>' + a.obs : ''}</div>
-        </div>
-      </div>`).join('');
+    document.getElementById('ap-timeline').innerHTML = htmlTimelineApontamentos(historicoOc);
   } else {
     timelineWrap.style.display = 'none';
   }
@@ -949,8 +968,9 @@ function renderDashboard(){
   document.getElementById('d-abertas').textContent = ocs.length;
   document.getElementById('d-suspeita').textContent = totSuspeita;
   document.getElementById('d-inspecionada').textContent = totInsp;
-  document.getElementById('d-pct-insp').textContent = (totSuspeita > 0 ? Math.round(totInsp / totSuspeita * 100) : 0) + '% do total suspeito';
-  document.getElementById('d-taxa-nok').textContent = (totInsp > 0 ? Math.round(totNok / totInsp * 100) : 0) + '%';
+  document.getElementById('d-pct-insp').textContent = fmtPct(totInsp, totSuspeita) + ' do total suspeito';
+  document.getElementById('d-taxa-nok').textContent = fmtPct(totNok, totInsp);
+  document.getElementById('d-nok-sub').textContent = totNok + (totNok === 1 ? ' peça NOK' : ' peças NOK');
 
   const alertasEl = document.getElementById('alertas-lista');
   alertasEl.innerHTML = !alertas.length
