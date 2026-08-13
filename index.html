@@ -146,6 +146,15 @@
   .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;font-size:13px;background:var(--gray-100);border-radius:6px;padding:12px 14px;}
   .info-grid > div span{color:var(--gray-500);font-size:11px;display:block;}
 
+  .timeline{display:flex;flex-direction:column;max-height:220px;overflow-y:auto;padding-right:4px;}
+  .timeline-item{display:flex;gap:10px;position:relative;padding-bottom:14px;}
+  .timeline-item:not(:last-child)::before{content:'';position:absolute;left:5px;top:14px;bottom:0;width:2px;background:var(--gray-300);}
+  .timeline-dot{width:12px;height:12px;border-radius:50%;background:var(--steel);flex:none;margin-top:2px;z-index:1;box-shadow:0 0 0 2px var(--white);}
+  .timeline-dot.first{background:var(--green);}
+  .timeline-content{flex:1;}
+  .timeline-time{font-weight:700;color:var(--gray-700);font-size:12px;}
+  .timeline-meta{color:var(--gray-500);font-size:12px;margin-top:2px;line-height:1.5;}
+
   @media (max-width:720px){
     .form-row,.form-row-4{grid-template-columns:1fr;}
     .info-grid{grid-template-columns:1fr;}
@@ -463,6 +472,10 @@
     <h2>Registrar Apontamento</h2>
     <div class="modal-sub" id="ap-oc-info"></div>
     <div class="info-grid" id="ap-oc-detalhe"></div>
+    <div id="ap-timeline-wrap" style="display:none;margin-bottom:16px;">
+      <div class="card-title" style="margin-bottom:8px;padding-bottom:6px;">Histórico de atualizações</div>
+      <div class="timeline" id="ap-timeline"></div>
+    </div>
     <div class="form-group">
       <label>Tipo de Inspeção <span style="color:var(--alert)">*</span></label>
       <select id="ap-tipo">
@@ -815,6 +828,31 @@ function openModalApontamento(ocId){
     <div><span>Já inspecionado</span>${t.inspecionada}</div>`;
   ['ap-peca', 'ap-suspeita', 'ap-inspecionada', 'ap-ok', 'ap-nok', 'ap-obs'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('ap-suspeita').value = t.suspeita || '';
+
+  // Histórico desta contenção, mais recente primeiro — e reaproveita peça/tipo
+  // do último apontamento pra não precisar redigitar toda vez.
+  const historicoOc = meusApontamentosCache.filter(a => a.ocorrenciaId === ocId)
+    .sort((a, b) => (b.dataHora && b.dataHora.toMillis ? b.dataHora.toMillis() : 0) - (a.dataHora && a.dataHora.toMillis ? a.dataHora.toMillis() : 0));
+  const ultimo = historicoOc[0];
+  if (ultimo) {
+    document.getElementById('ap-peca').value = ultimo.peca || '';
+    document.getElementById('ap-tipo').value = ultimo.tipo || '100%';
+  }
+  const timelineWrap = document.getElementById('ap-timeline-wrap');
+  if (historicoOc.length) {
+    timelineWrap.style.display = 'block';
+    document.getElementById('ap-timeline').innerHTML = historicoOc.map((a, i) => `
+      <div class="timeline-item">
+        <div class="timeline-dot ${i === historicoOc.length - 1 ? 'first' : ''}"></div>
+        <div class="timeline-content">
+          <div class="timeline-time">${fmtDataHora(a.dataHora)}</div>
+          <div class="timeline-meta">${a.tipo || ''}${a.peca ? ' · Peça ' + a.peca : ''} — Insp: <b>${a.inspecionada}</b> · OK: <b style="color:var(--green)">${a.ok}</b> · NOK: <b style="color:var(--alert)">${a.nok}</b>${a.obs ? '<br>' + a.obs : ''}</div>
+        </div>
+      </div>`).join('');
+  } else {
+    timelineWrap.style.display = 'none';
+  }
+
   document.getElementById('ap-error').style.display = 'none';
   document.getElementById('modal-apontamento').classList.add('open');
 }
