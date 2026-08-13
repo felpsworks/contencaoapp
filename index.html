@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contenção CS1 — Terceiros e Residente</title>
+<style>
+  :root {
+    --red:#1B3A5C;--red-dark:#0F2540;--red-light:#E8EEF4;
+    --black:#0F0F0F;--gray-700:#3D3D3D;--gray-500:#6B6B6B;
+    --gray-300:#BEBEBE;--gray-100:#F2F2F2;--white:#FFFFFF;
+    --green:#1A7A3C;--green-light:#E6F4EC;
+    --yellow:#3B7CA8;--yellow-light:#E3EFF6;
+    --steel:#3B7CA8;--steel-dark:#2A5C80;
+    --alert:#C0392B;--alert-light:#FBEAEA;
+    --warn:#E8A93B;--warn-light:#FBF3E3;
+    --font:'Segoe UI',system-ui,sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:var(--font);background:var(--gray-100);color:var(--black);min-height:100vh;}
+
+  .header{background:var(--white);color:var(--black);display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:60px;position:sticky;top:0;z-index:100;border-bottom:3px solid var(--red);box-shadow:0 1px 4px rgba(0,0,0,0.08);}
+  .header-brand{display:flex;align-items:center;gap:12px;}
+  .header-logo{display:flex;align-items:center;justify-content:center;height:36px;width:36px;background:var(--red);border-radius:8px;color:white;font-weight:800;font-size:15px;}
+  .header-title{font-size:15px;font-weight:600;color:var(--black);}
+  .header-sub{font-size:11px;color:var(--red);letter-spacing:1px;text-transform:uppercase;font-weight:600;}
+  .header-right{display:flex;align-items:center;}
+  .header-user{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--gray-700);}
+  .btn-logout{background:var(--gray-700);color:white;border:none;padding:5px 12px;border-radius:4px;font-size:12px;cursor:pointer;}
+  .btn-logout:hover{background:var(--red);}
+
+  .screen{display:none;}.screen.active{display:block;}
+
+  .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg, var(--red-dark) 0%, var(--red) 100%);}
+  .login-card{background:var(--white);border-radius:8px;padding:40px 36px;width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.4);text-align:center;}
+  .login-logo{display:flex;justify-content:center;margin-bottom:14px;}
+  .login-logo-box{width:64px;height:64px;border-radius:14px;background:var(--red);color:white;display:flex;align-items:center;justify-content:center;font-size:28px;}
+  .login-card h1{font-size:19px;font-weight:700;margin-bottom:4px;line-height:1.3;}
+  .login-card p{font-size:13px;color:var(--gray-500);margin-bottom:24px;}
+  .login-accent{display:block;width:40px;height:3px;background:var(--red);margin:8px auto 20px;}
+  .login-card .form-group,.login-card button{text-align:left;}
+  .login-hint{font-size:11px;color:var(--gray-500);margin-top:16px;text-align:center;line-height:1.6;}
+
+  .form-group{margin-bottom:16px;}
+  .form-group label{display:block;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--gray-700);margin-bottom:6px;}
+  .form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 12px;border:1.5px solid var(--gray-300);border-radius:5px;font-size:14px;font-family:var(--font);background:var(--gray-100);transition:border-color 0.2s;}
+  .form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--red);background:var(--white);}
+  .form-group input:disabled{opacity:.6;}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .form-row-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+  .form-check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--gray-700);margin-bottom:16px;}
+  .form-check input{width:16px;height:16px;accent-color:var(--red);}
+  .field-error{color:var(--alert);font-size:12px;margin:-8px 0 12px;display:none;}
+  .field-hint{font-size:11px;color:var(--gray-500);margin:-10px 0 14px;}
+
+  .btn{padding:10px 20px;border:none;border-radius:5px;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all 0.2s;}
+  .btn-primary{background:var(--red);color:white;width:100%;padding:12px;}
+  .btn-primary:hover{background:var(--red-dark);}
+  .btn-primary:disabled{opacity:.6;cursor:default;}
+  .btn-secondary{background:var(--gray-100);color:var(--gray-700);border:1.5px solid var(--gray-300);}
+  .btn-secondary:hover{background:var(--gray-300);}
+  .btn-danger{background:var(--alert-light);color:var(--alert);border:1.5px solid var(--alert);}
+  .btn-sm{padding:6px 12px;font-size:12px;width:auto;}
+  .btn-block{width:100%;}
+  .btn-auto{width:auto;}
+
+  .main{max-width:1400px;margin:0 auto;padding:24px 16px;}
+  .nav-tabs{display:flex;gap:4px;background:var(--white);padding:6px;border-radius:8px;margin-bottom:24px;box-shadow:0 1px 4px rgba(0,0,0,0.08);}
+  .nav-tab{flex:1;padding:10px;border:none;background:transparent;border-radius:5px;font-size:13px;font-weight:600;cursor:pointer;color:var(--gray-500);font-family:var(--font);}
+  .nav-tab.active{background:var(--red);color:white;}
+  .nav-tab:hover:not(.active){background:var(--gray-100);}
+  .tab-content{display:none;}.tab-content.active{display:block;}
+
+  .card{background:var(--white);border-radius:8px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08);margin-bottom:16px;}
+  .card-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--gray-500);margin-bottom:16px;padding-bottom:10px;border-bottom:1.5px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center;}
+
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px;}
+  .kpi{background:var(--white);border-radius:8px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,0.08);border-left:4px solid var(--gray-300);}
+  .kpi.red{border-left-color:var(--alert);}.kpi.green{border-left-color:var(--green);}.kpi.yellow{border-left-color:var(--warn);}
+  .kpi-label{font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--gray-500);font-weight:600;margin-bottom:4px;}
+  .kpi-value{font-size:30px;font-weight:800;line-height:1;}
+  .kpi-sub{font-size:11px;color:var(--gray-500);margin-top:5px;}
+
+  .table-wrap{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  thead th{background:var(--gray-100);padding:9px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--gray-500);font-weight:700;border-bottom:2px solid var(--gray-300);white-space:nowrap;}
+  tbody td{padding:9px 12px;border-bottom:1px solid var(--gray-100);}
+  tbody tr:hover{background:var(--gray-100);}
+
+  .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;}
+  .badge-red{background:var(--alert-light);color:var(--alert);}
+  .badge-green{background:var(--green-light);color:var(--green);}
+  .badge-yellow{background:var(--yellow-light);color:var(--yellow);}
+  .badge-gray{background:var(--gray-100);color:var(--gray-500);}
+
+  .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:flex-end;}
+  .filter-group{display:flex;flex-direction:column;gap:3px;}
+  .filter-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--gray-500);}
+  .filters input,.filters select{padding:7px 10px;border:1.5px solid var(--gray-300);border-radius:5px;font-size:13px;font-family:var(--font);background:white;}
+
+  .empty{text-align:center;padding:36px;color:var(--gray-500);}
+  .empty-icon{font-size:36px;margin-bottom:10px;}
+
+  .refresh-tag{font-size:11px;color:var(--gray-500);display:flex;align-items:center;gap:6px;}
+  .refresh-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 1.6s infinite;}
+  @keyframes pulse{0%{opacity:1}50%{opacity:.25}100%{opacity:1}}
+
+  /* CARD DE OCORRÊNCIA (visão fornecedor) */
+  .oc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;margin-bottom:20px;}
+  .oc-card{background:var(--white);border-radius:8px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,0.08);border-left:4px solid var(--steel);}
+  .oc-card.parada{border-left-color:var(--alert);}
+  .oc-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+  .oc-card-nc{font-weight:800;font-size:14px;}
+  .oc-card-desc{font-size:12.5px;color:var(--gray-700);margin-bottom:10px;line-height:1.4;}
+  .oc-card-meta{font-size:11px;color:var(--gray-500);margin-bottom:12px;}
+  .oc-progress{background:var(--gray-100);border-radius:5px;height:8px;overflow:hidden;margin-bottom:6px;}
+  .oc-progress-fill{height:100%;background:linear-gradient(90deg,var(--steel) 0%,var(--red) 100%);border-radius:5px;transition:width .4s ease;}
+  .oc-totais{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:12px 0;text-align:center;}
+  .oc-totais div{background:var(--gray-100);border-radius:5px;padding:6px 2px;}
+  .oc-totais b{display:block;font-size:16px;font-weight:800;}
+  .oc-totais span{font-size:9.5px;color:var(--gray-500);text-transform:uppercase;letter-spacing:.3px;}
+
+  /* HBAR CHART */
+  .hbar-chart{display:flex;flex-direction:column;gap:12px;padding:6px 4px;}
+  .hbar-row{display:grid;grid-template-columns:150px 1fr 40px;align-items:center;gap:10px;}
+  .hbar-label{font-size:12.5px;font-weight:600;color:var(--gray-700);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .hbar-track{background:var(--gray-100);border-radius:5px;height:20px;overflow:hidden;}
+  .hbar-fill{height:100%;background:linear-gradient(90deg,var(--red) 0%,var(--steel) 100%);border-radius:5px;min-width:3px;transition:width 0.4s ease;}
+  .hbar-value{font-weight:700;font-size:12.5px;}
+
+  .alert-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border-radius:6px;background:var(--alert-light);border-left:4px solid var(--alert);margin-bottom:8px;font-size:13px;}
+  .alert-item-time{font-weight:800;color:var(--alert);white-space:nowrap;}
+
+  .admin-item{display:flex;align-items:center;gap:14px;padding:12px 4px;border-bottom:1px solid var(--gray-100);}
+  .admin-item-info{flex:1;}
+  .admin-item-actions{display:flex;gap:8px;flex:none;}
+
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;align-items:center;justify-content:center;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:white;border-radius:10px;padding:28px;width:560px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,0.3);}
+  .modal h2{font-size:17px;font-weight:700;margin-bottom:4px;}
+  .modal-sub{font-size:12px;color:var(--gray-500);margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid var(--gray-100);}
+  .modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;}
+  .modal-footer .btn{width:auto;}
+  .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;font-size:13px;background:var(--gray-100);border-radius:6px;padding:12px 14px;}
+  .info-grid > div span{color:var(--gray-500);font-size:11px;display:block;}
+
+  @media (max-width:720px){
+    .form-row,.form-row-4{grid-template-columns:1fr;}
+    .info-grid{grid-template-columns:1fr;}
+    .oc-totais{grid-template-columns:repeat(2,1fr);}
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ LOGIN ═══ -->
+<div class="screen active" id="screen-login">
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-logo"><div class="login-logo-box">🛡️</div></div>
+      <h1>Contenção CS1<br>Terceiros &amp; Residente</h1>
+      <p>Apontamento em tempo real de inspeção</p>
+      <span class="login-accent"></span>
+      <div class="form-group">
+        <label>Usuário</label>
+        <input type="text" id="login-user" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
+      </div>
+      <div class="form-group">
+        <label>Senha</label>
+        <input type="password" id="login-pass" autocomplete="current-password" onkeydown="if(event.key==='Enter')fazerLogin()">
+      </div>
+      <div class="field-error" id="login-error"></div>
+      <button class="btn btn-primary" id="login-btn" onclick="fazerLogin()">Entrar</button>
+      <div class="login-hint">Peça seu usuário e senha à equipe de qualidade.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ APP ═══ -->
+<div class="screen" id="screen-app">
+  <div class="header">
+    <div class="header-brand">
+      <div class="header-logo">CS1</div>
+      <div>
+        <div class="header-title">Contenção CS1</div>
+        <div class="header-sub" id="header-sub">Terceiros &amp; Residente</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="header-user">
+        <span id="header-user-name"></span>
+        <span class="badge badge-red" id="header-user-badge"></span>
+        <button class="btn-logout" onclick="logout()">Sair</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="nav-tabs" id="nav-tabs">
+      <button class="nav-tab active" id="btn-tab-minhas" onclick="showTab('minhas')">📋 Minhas Contenções</button>
+      <button class="nav-tab" id="btn-tab-historico" onclick="showTab('historico')">🕘 Histórico</button>
+      <button class="nav-tab" id="btn-tab-dashboard" style="display:none" onclick="showTab('dashboard')">📊 Dashboard</button>
+      <button class="nav-tab" id="btn-tab-ocorrencias" style="display:none" onclick="showTab('ocorrencias')">🗂 Ocorrências</button>
+      <button class="nav-tab" id="btn-tab-admin" style="display:none" onclick="showTab('admin')">⚙ Admin</button>
+    </div>
+
+    <!-- MINHAS CONTENÇÕES (fornecedor/residente) -->
+    <div class="tab-content active" id="tab-minhas">
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-title">
+          <span>Contenções em Andamento</span>
+          <span class="refresh-tag"><span class="refresh-dot"></span>ao vivo</span>
+        </div>
+        <p style="font-size:12.5px;color:var(--gray-500);">Registre aqui, em tempo real, o resultado da inspeção de cada contenção atribuída a você. Cada apontamento fica salvo imediatamente e visível para a equipe de qualidade.</p>
+      </div>
+      <div class="oc-grid" id="minhas-grid"></div>
+    </div>
+
+    <!-- HISTÓRICO -->
+    <div class="tab-content" id="tab-historico">
+      <div class="card">
+        <div class="card-title">Histórico de Apontamentos</div>
+        <div class="filters">
+          <div class="filter-group"><span class="filter-label">De</span><input type="date" id="h-ini" onchange="renderHistorico()"></div>
+          <div class="filter-group"><span class="filter-label">Até</span><input type="date" id="h-fim" onchange="renderHistorico()"></div>
+          <div class="filter-group" id="h-fornecedor-wrap" style="display:none"><span class="filter-label">Fornecedor</span><select id="h-fornecedor" onchange="renderHistorico()"></select></div>
+          <div class="filter-group"><span class="filter-label">Cliente</span><select id="h-cliente" onchange="renderHistorico()"></select></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Data/Hora</th><th>NC</th><th>Cliente</th><th id="h-th-fornecedor" style="display:none">Fornecedor</th>
+              <th>Tipo Insp.</th><th>Peça</th><th>Suspeita</th><th>Inspecionada</th><th>OK</th><th>NOK</th><th>Obs.</th>
+            </tr></thead>
+            <tbody id="h-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- DASHBOARD (admin) -->
+    <div class="tab-content" id="tab-dashboard">
+      <div class="filters">
+        <div class="filter-group"><span class="filter-label">Cliente</span><select id="db-cliente" onchange="renderDashboard()"><option value="">Todos</option></select></div>
+        <div class="filter-group"><span class="filter-label">Fornecedor</span><select id="db-fornecedor" onchange="renderDashboard()"><option value="">Todos</option></select></div>
+        <span class="refresh-tag" style="margin-left:auto;"><span class="refresh-dot"></span>ao vivo</span>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi"><div class="kpi-label">Ocorrências Abertas</div><div class="kpi-value" id="d-abertas">0</div></div>
+        <div class="kpi yellow"><div class="kpi-label">Peças Suspeitas (total)</div><div class="kpi-value" id="d-suspeita">0</div></div>
+        <div class="kpi green"><div class="kpi-label">Peças Inspecionadas</div><div class="kpi-value" id="d-inspecionada">0</div><div class="kpi-sub" id="d-pct-insp">0% do total suspeito</div></div>
+        <div class="kpi red"><div class="kpi-label">Taxa de NOK</div><div class="kpi-value" id="d-taxa-nok">0%</div></div>
+      </div>
+
+      <div class="card" id="card-alertas">
+        <div class="card-title">⚠ Contenções sem apontamento recente (+4h)</div>
+        <div id="alertas-lista"></div>
+      </div>
+
+      <div class="form-row">
+        <div class="card"><div class="card-title">Progresso por Fornecedor / Residente</div><div class="hbar-chart" id="hbar-fornecedor"></div></div>
+        <div class="card"><div class="card-title">Peças Suspeitas por Cliente</div><div class="hbar-chart" id="hbar-cliente"></div></div>
+      </div>
+    </div>
+
+    <!-- OCORRÊNCIAS (admin) -->
+    <div class="tab-content" id="tab-ocorrencias">
+      <div class="card">
+        <div class="card-title">
+          <span>Ocorrências (todas)</span>
+          <button class="btn btn-primary btn-sm" onclick="openModalNovaOcorrencia()">+ Nova Ocorrência</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>NC</th><th>Cliente</th><th>Descrição</th><th>Fornecedor</th><th>Abertura</th><th>Status</th><th>Último apont.</th><th></th></tr></thead>
+            <tbody id="oc-admin-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADMIN (cadastros) -->
+    <div class="tab-content" id="tab-admin">
+      <div class="card">
+        <div class="card-title">
+          <span>Usuários (Fornecedores e Residente)</span>
+          <button class="btn btn-primary btn-sm" onclick="openModalUsuario()">+ Novo Usuário</button>
+        </div>
+        <p style="font-size:11.5px;color:var(--gray-500);margin-bottom:10px;">Para trocar a senha de alguém, use o Firebase Console ▸ Authentication ▸ menu do usuário ▸ Redefinir senha.</p>
+        <div id="adm-usuarios-lista"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Clientes</div>
+        <div class="form-row">
+          <input type="text" id="cli-novo" placeholder="Novo cliente (ex: ZF)" onkeydown="if(event.key==='Enter')adicionarCliente()">
+          <button class="btn btn-secondary btn-auto" onclick="adicionarCliente()">Adicionar</button>
+        </div>
+        <div id="clientes-admin-lista" style="margin-top:12px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: novo apontamento -->
+<div class="modal-overlay" id="modal-apontamento">
+  <div class="modal">
+    <h2>Registrar Apontamento</h2>
+    <div class="modal-sub" id="ap-oc-info"></div>
+    <div class="info-grid" id="ap-oc-detalhe"></div>
+    <div class="form-group">
+      <label>Tipo de Inspeção <span style="color:var(--alert)">*</span></label>
+      <select id="ap-tipo">
+        <option value="100%">Inspeção 100%</option>
+        <option value="Amostragem">Amostragem</option>
+        <option value="Retrabalho">Retrabalho</option>
+        <option value="Sorting">Sorting / Seleção</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Peça / Código</label>
+      <input type="text" id="ap-peca" placeholder="Ex: 2782">
+    </div>
+    <div class="form-row-4">
+      <div class="form-group"><label>Qtd. Suspeita <span style="color:var(--alert)">*</span></label><input type="number" id="ap-suspeita" min="0" placeholder="0"></div>
+      <div class="form-group"><label>Qtd. Inspecionada <span style="color:var(--alert)">*</span></label><input type="number" id="ap-inspecionada" min="0" placeholder="0"></div>
+      <div class="form-group"><label>Qtd. OK</label><input type="number" id="ap-ok" min="0" placeholder="0"></div>
+      <div class="form-group"><label>Qtd. NOK</label><input type="number" id="ap-nok" min="0" placeholder="0"></div>
+    </div>
+    <div class="form-group">
+      <label>Observação</label>
+      <textarea id="ap-obs" rows="2" placeholder="Opcional"></textarea>
+    </div>
+    <div class="field-error" id="ap-error"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-apontamento')">Cancelar</button>
+      <button class="btn btn-primary" id="ap-btn-salvar" onclick="salvarApontamento()">Salvar Apontamento</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: nova ocorrência (admin) -->
+<div class="modal-overlay" id="modal-nova-ocorrencia">
+  <div class="modal">
+    <h2>Nova Ocorrência</h2>
+    <div class="modal-sub">Abertura de contenção — atribuída a um fornecedor ou ao residente.</div>
+    <div class="form-row">
+      <div class="form-group"><label>Nº da NC <span style="color:var(--alert)">*</span></label><input type="text" id="no-nc" placeholder="Ex: NC-2026-0170"></div>
+      <div class="form-group"><label>Cliente <span style="color:var(--alert)">*</span></label><select id="no-cliente"></select></div>
+    </div>
+    <div class="form-group"><label>Descrição da não conformidade <span style="color:var(--alert)">*</span></label><textarea id="no-desc" rows="2"></textarea></div>
+    <div class="form-group"><label>Responsável pela contenção <span style="color:var(--alert)">*</span></label><select id="no-fornecedor"></select></div>
+    <div class="field-error" id="no-error"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-nova-ocorrencia')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarOcorrencia()">Abrir Ocorrência</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: usuário (admin) -->
+<div class="modal-overlay" id="modal-usuario">
+  <div class="modal">
+    <h2 id="us-modal-title">Novo Usuário</h2>
+    <div class="modal-sub">Cada usuário só acessa os próprios dados após o login.</div>
+    <input type="hidden" id="us-id">
+    <div class="form-group"><label>Nome (empresa ou pessoa) <span style="color:var(--alert)">*</span></label><input type="text" id="us-nome" placeholder="Ex: Formel D"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Login <span style="color:var(--alert)">*</span></label><input type="text" id="us-login" placeholder="Ex: formeld"></div>
+      <div class="form-group" id="us-senha-wrap"><label>Senha <span style="color:var(--alert)">*</span></label><input type="text" id="us-senha" placeholder="Senha de acesso"></div>
+    </div>
+    <div class="field-hint" id="us-login-hint" style="display:none">O login não pode ser alterado depois de criado.</div>
+    <div class="form-group"><label>Perfil <span style="color:var(--alert)">*</span></label>
+      <select id="us-perfil"><option value="fornecedor">Empresa Terceira (Fornecedor)</option><option value="residente">Residente</option><option value="admin">Administrador (Qualidade)</option></select>
+    </div>
+    <div class="form-check"><input type="checkbox" id="us-ativo" checked><label for="us-ativo">Usuário ativo</label></div>
+    <div class="field-error" id="us-error"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-usuario')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarUsuario()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: encerrar ocorrência -->
+<div class="modal-overlay" id="modal-encerrar">
+  <div class="modal">
+    <h2>Encerrar Ocorrência?</h2>
+    <div class="modal-sub">A ocorrência sairá da lista de contenções ativas. O histórico permanece disponível.</div>
+    <input type="hidden" id="enc-id">
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-encerrar')">Cancelar</button>
+      <button class="btn btn-danger" onclick="confirmarEncerrar()">Encerrar</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script>
+// ══════════════════════════ FIREBASE ══════════════════════════
+// Cole aqui a configuração do seu projeto Firebase (Console ▸ Configurações
+// do projeto ▸ Seus apps ▸ Config).
+const firebaseConfig = {
+  apiKey: "AIzaSyBt0esecdmbX4L62k_YsIGm0CWy_eYgkYw",
+  authDomain: "contencao-geral.firebaseapp.com",
+  projectId: "contencao-geral",
+  storageBucket: "contencao-geral.firebasestorage.app",
+  messagingSenderId: "813957362317",
+  appId: "1:813957362317:web:092ab5afcea062ec8d28c4"
+};
+const EMAIL_DOMINIO = '@cs1.local'; // login vira "usuario@cs1.local" por baixo dos panos
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+// App Firebase secundário: só serve para criar um novo usuário sem
+// derrubar a sessão do admin logado (limitação conhecida do SDK client-side).
+const secondaryApp = firebase.initializeApp(firebaseConfig, 'Secondary');
+const secondaryAuth = secondaryApp.auth();
+
+let currentUser = null; // {uid, nome, perfil}
+let clientesCache = [];
+let fornecedoresCache = [];
+let usuariosCache = [];
+let minhasOcorrenciasCache = [];
+let meusApontamentosCache = [];
+let ocorrenciasAdminCache = [];
+let apontamentosAdminCache = [];
+let listenersAtivos = [];
+
+function pararListeners(){ listenersAtivos.forEach(unsub => unsub()); listenersAtivos = []; }
+
+function traduzErroFirebase(e){
+  const code = e && e.code;
+  if (code === 'auth/email-already-in-use') return 'Já existe um usuário com esse login.';
+  if (code === 'auth/weak-password') return 'Senha muito curta (mínimo 6 caracteres).';
+  if (code === 'auth/invalid-email') return 'Login inválido — use apenas letras e números.';
+  if (code === 'auth/wrong-password' || code === 'auth/user-not-found' || code === 'auth/invalid-credential') return 'Usuário ou senha inválidos.';
+  return e && e.message ? e.message : 'Ocorreu um erro. Tente novamente.';
+}
+
+// ══════════════════════════ SESSÃO / LOGIN ══════════════════════════
+async function fazerLogin(){
+  const login = document.getElementById('login-user').value.trim().toLowerCase();
+  const senha = document.getElementById('login-pass').value;
+  const err = document.getElementById('login-error');
+  const btn = document.getElementById('login-btn');
+  err.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Entrando...';
+  try {
+    const email = login.includes('@') ? login : login + EMAIL_DOMINIO;
+    await auth.signInWithEmailAndPassword(email, senha);
+    // onAuthStateChanged cuida da transição de tela.
+  } catch (e) {
+    err.textContent = traduzErroFirebase(e);
+    err.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Entrar';
+  }
+}
+function logout(){ auth.signOut(); }
+
+auth.onAuthStateChanged(async (user) => {
+  pararListeners();
+  if (!user) {
+    currentUser = null;
+    document.getElementById('screen-app').classList.remove('active');
+    document.getElementById('screen-login').classList.add('active');
+    document.getElementById('login-user').value = '';
+    document.getElementById('login-pass').value = '';
+    return;
+  }
+  const doc = await db.collection('usuarios').doc(user.uid).get();
+  if (!doc.exists) {
+    const err = document.getElementById('login-error');
+    err.textContent = 'Conta sem cadastro em Usuários. Fale com o administrador.';
+    err.style.display = 'block';
+    auth.signOut();
+    return;
+  }
+  const d = doc.data();
+  currentUser = { uid: user.uid, nome: d.nome, perfil: d.perfil };
+  document.getElementById('screen-login').classList.remove('active');
+  document.getElementById('screen-app').classList.add('active');
+  document.getElementById('header-user-name').textContent = currentUser.nome;
+  document.getElementById('header-user-badge').textContent = currentUser.perfil === 'admin' ? 'Qualidade' : currentUser.perfil === 'residente' ? 'Residente' : 'Fornecedor';
+  configurarAbasPorPerfil();
+  await carregarListasApoio();
+  iniciarListeners();
+  showTab(currentUser.perfil === 'admin' ? 'dashboard' : 'minhas');
+});
+
+function configurarAbasPorPerfil(){
+  const isAdmin = currentUser.perfil === 'admin';
+  document.getElementById('btn-tab-minhas').style.display = isAdmin ? 'none' : '';
+  document.getElementById('btn-tab-dashboard').style.display = isAdmin ? '' : 'none';
+  document.getElementById('btn-tab-ocorrencias').style.display = isAdmin ? '' : 'none';
+  document.getElementById('btn-tab-admin').style.display = isAdmin ? '' : 'none';
+  document.getElementById('h-th-fornecedor').style.display = isAdmin ? '' : 'none';
+  document.getElementById('h-fornecedor-wrap').style.display = isAdmin ? '' : 'none';
+}
+
+function showTab(name){
+  if (!currentUser) return;
+  const isAdmin = currentUser.perfil === 'admin';
+  if ((name === 'dashboard' || name === 'ocorrencias' || name === 'admin') && !isAdmin) return;
+  if (name === 'minhas' && isAdmin) return;
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.getElementById('btn-tab-' + name).classList.add('active');
+  if (name === 'minhas') renderMinhas();
+  if (name === 'historico') renderHistorico();
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'ocorrencias') renderOcorrenciasAdmin();
+  if (name === 'admin') renderAdmin();
+}
+
+// ══════════════════════════ LISTENERS EM TEMPO REAL ══════════════════════════
+// Isolamento real: um fornecedor só consegue registrar um listener com
+// where('usuarioId','==', seu próprio uid) — as Regras de Segurança do
+// Firestore recusam qualquer consulta que tente ler além disso.
+function iniciarListeners(){
+  if (currentUser.perfil === 'admin') {
+    listenersAtivos.push(db.collection('ocorrencias').onSnapshot(snap => {
+      ocorrenciasAdminCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderOcorrenciasAdmin(); renderDashboard();
+    }));
+    listenersAtivos.push(db.collection('apontamentos').onSnapshot(snap => {
+      apontamentosAdminCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderOcorrenciasAdmin(); renderDashboard(); renderHistorico();
+    }));
+  } else {
+    listenersAtivos.push(db.collection('ocorrencias').where('usuarioId', '==', currentUser.uid).onSnapshot(snap => {
+      minhasOcorrenciasCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderMinhas(); renderHistorico();
+    }));
+    listenersAtivos.push(db.collection('apontamentos').where('usuarioId', '==', currentUser.uid).onSnapshot(snap => {
+      meusApontamentosCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderMinhas(); renderHistorico();
+    }));
+  }
+}
+
+// ══════════════════════════ HELPERS DE DATA ══════════════════════════
+function fmtDataHora(ts){
+  if (!ts) return '';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function fmtData(ts){
+  if (!ts) return '';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+function horasDesdeTs(ts){
+  if (!ts) return null;
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return (Date.now() - d.getTime()) / 3600000;
+}
+function totaisDaOcorrencia(ocId, apontamentos){
+  const lista = apontamentos.filter(a => a.ocorrenciaId === ocId);
+  return lista.reduce((t, a) => ({
+    suspeita: Math.max(t.suspeita, a.suspeita || 0),
+    inspecionada: t.inspecionada + (a.inspecionada || 0),
+    ok: t.ok + (a.ok || 0),
+    nok: t.nok + (a.nok || 0),
+    ultimoApontamento: (!t.ultimoApontamento || (a.dataHora && a.dataHora.toMillis && a.dataHora.toMillis() > t.ultimoApontamento.toMillis())) ? a.dataHora : t.ultimoApontamento
+  }), { suspeita: 0, inspecionada: 0, ok: 0, nok: 0, ultimoApontamento: null });
+}
+
+// ══════════════════════════ MINHAS CONTENÇÕES ══════════════════════════
+function renderMinhas(){
+  if (!currentUser || currentUser.perfil === 'admin') return;
+  const grid = document.getElementById('minhas-grid');
+  const ocs = minhasOcorrenciasCache.filter(o => o.status === 'aberta');
+  if (!ocs.length) { grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">✅</div>Nenhuma contenção em aberto no momento.</div>'; return; }
+  grid.innerHTML = ocs.map(o => {
+    const t = totaisDaOcorrencia(o.id, meusApontamentosCache);
+    const pct = t.suspeita > 0 ? Math.min(100, Math.round(t.inspecionada / t.suspeita * 100)) : 0;
+    const horas = horasDesdeTs(t.ultimoApontamento);
+    const parada = horas === null || horas > 4;
+    return `<div class="oc-card ${parada ? 'parada' : ''}">
+      <div class="oc-card-top">
+        <div>
+          <div class="oc-card-nc">${o.nc}</div>
+          <div style="font-size:11px;color:var(--gray-500);">${o.cliente}</div>
+        </div>
+        ${parada ? '<span class="badge badge-red">Sem apontamento +4h</span>' : '<span class="badge badge-yellow">Em andamento</span>'}
+      </div>
+      <div class="oc-card-desc">${o.descricao}</div>
+      <div class="oc-progress"><div class="oc-progress-fill" style="width:${pct}%"></div></div>
+      <div class="oc-card-meta">${pct}% inspecionado do total suspeito</div>
+      <div class="oc-totais">
+        <div><b>${t.suspeita}</b><span>Suspeita</span></div>
+        <div><b>${t.inspecionada}</b><span>Inspec.</span></div>
+        <div><b style="color:var(--green)">${t.ok}</b><span>OK</span></div>
+        <div><b style="color:var(--alert)">${t.nok}</b><span>NOK</span></div>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="openModalApontamento('${o.id}')">+ Registrar Apontamento</button>
+    </div>`;
+  }).join('');
+}
+
+function openModalApontamento(ocId){
+  const o = minhasOcorrenciasCache.find(x => x.id === ocId);
+  if (!o) return;
+  const t = totaisDaOcorrencia(o.id, meusApontamentosCache);
+  document.getElementById('modal-apontamento').dataset.ocId = ocId;
+  document.getElementById('ap-oc-info').textContent = `${o.nc} — ${o.cliente}`;
+  document.getElementById('ap-oc-detalhe').innerHTML = `
+    <div><span>Suspeita (total)</span>${t.suspeita}</div>
+    <div><span>Já inspecionado</span>${t.inspecionada}</div>`;
+  ['ap-peca', 'ap-suspeita', 'ap-inspecionada', 'ap-ok', 'ap-nok', 'ap-obs'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('ap-suspeita').value = t.suspeita || '';
+  document.getElementById('ap-error').style.display = 'none';
+  document.getElementById('modal-apontamento').classList.add('open');
+}
+async function salvarApontamento(){
+  const ocorrenciaId = document.getElementById('modal-apontamento').dataset.ocId;
+  const err = document.getElementById('ap-error');
+  const inspecionada = Number(document.getElementById('ap-inspecionada').value) || 0;
+  const ok = Number(document.getElementById('ap-ok').value) || 0;
+  const nok = Number(document.getElementById('ap-nok').value) || 0;
+  if (inspecionada <= 0 || ok + nok !== inspecionada) {
+    err.textContent = 'OK + NOK deve ser igual à quantidade inspecionada.'; err.style.display = 'block'; return;
+  }
+  err.style.display = 'none';
+  const btn = document.getElementById('ap-btn-salvar');
+  btn.disabled = true; btn.textContent = 'Salvando...';
+  try {
+    await db.collection('apontamentos').add({
+      ocorrenciaId, usuarioId: currentUser.uid, dataHora: firebase.firestore.FieldValue.serverTimestamp(),
+      tipo: document.getElementById('ap-tipo').value, peca: document.getElementById('ap-peca').value.trim(),
+      suspeita: Number(document.getElementById('ap-suspeita').value) || 0, inspecionada, ok, nok,
+      obs: document.getElementById('ap-obs').value.trim()
+    });
+    closeModal('modal-apontamento');
+  } catch (e) {
+    err.textContent = traduzErroFirebase(e); err.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Salvar Apontamento';
+  }
+}
+
+// ══════════════════════════ HISTÓRICO ══════════════════════════
+function renderHistorico(){
+  if (!currentUser) return;
+  const isAdmin = currentUser.perfil === 'admin';
+  const ini = document.getElementById('h-ini').value;
+  const fim = document.getElementById('h-fim').value;
+  const cliSel = document.getElementById('h-cliente').value;
+  const fornSel = isAdmin ? document.getElementById('h-fornecedor').value : '';
+
+  const apontamentos = isAdmin ? apontamentosAdminCache : meusApontamentosCache;
+  const ocorrencias = isAdmin ? ocorrenciasAdminCache : minhasOcorrenciasCache;
+
+  let linhas = apontamentos.map(a => {
+    const oc = ocorrencias.find(o => o.id === a.ocorrenciaId);
+    if (!oc) return null;
+    const forn = isAdmin ? usuariosCache.find(u => u.id === oc.usuarioId) : null;
+    return { a, oc, fornNome: forn ? forn.nome : '—' };
+  }).filter(Boolean);
+
+  linhas = linhas.filter(({ a, oc }) => {
+    const dia = fmtData(a.dataHora);
+    if (ini && dia < ini) return false;
+    if (fim && dia > fim) return false;
+    if (cliSel && oc.cliente !== cliSel) return false;
+    if (fornSel && oc.usuarioId !== fornSel) return false;
+    return true;
+  }).sort((x, y) => (y.a.dataHora ? y.a.dataHora.toMillis() : 0) - (x.a.dataHora ? x.a.dataHora.toMillis() : 0));
+
+  const tbody = document.getElementById('h-tbody');
+  if (!linhas.length) { tbody.innerHTML = `<tr><td colspan="${isAdmin ? 11 : 10}" class="empty">Nenhum apontamento encontrado.</td></tr>`; return; }
+  tbody.innerHTML = linhas.map(({ a, oc, fornNome }) => `<tr>
+      <td>${fmtDataHora(a.dataHora)}</td><td>${oc.nc}</td><td>${oc.cliente}</td>
+      ${isAdmin ? `<td>${fornNome}</td>` : ''}
+      <td>${a.tipo}</td><td>${a.peca || '—'}</td>
+      <td>${a.suspeita || '—'}</td><td>${a.inspecionada}</td>
+      <td style="color:var(--green);font-weight:700">${a.ok}</td>
+      <td style="color:var(--alert);font-weight:700">${a.nok}</td>
+      <td>${a.obs || ''}</td>
+    </tr>`).join('');
+}
+
+// ══════════════════════════ DASHBOARD (ADMIN) ══════════════════════════
+function renderDashboard(){
+  if (!currentUser || currentUser.perfil !== 'admin') return;
+  const cliSel = document.getElementById('db-cliente').value;
+  const fornSel = document.getElementById('db-fornecedor').value;
+  let ocs = ocorrenciasAdminCache.filter(o => o.status === 'aberta');
+  if (cliSel) ocs = ocs.filter(o => o.cliente === cliSel);
+  if (fornSel) ocs = ocs.filter(o => o.usuarioId === fornSel);
+
+  let totSuspeita = 0, totInsp = 0, totOk = 0, totNok = 0;
+  const porFornecedor = {}, porCliente = {}, alertas = [];
+  ocs.forEach(o => {
+    const t = totaisDaOcorrencia(o.id, apontamentosAdminCache);
+    totSuspeita += t.suspeita; totInsp += t.inspecionada; totOk += t.ok; totNok += t.nok;
+    const forn = usuariosCache.find(u => u.id === o.usuarioId);
+    const nomeForn = forn ? forn.nome : '—';
+    porFornecedor[nomeForn] = (porFornecedor[nomeForn] || 0) + t.inspecionada;
+    porCliente[o.cliente] = (porCliente[o.cliente] || 0) + t.suspeita;
+    const horas = horasDesdeTs(t.ultimoApontamento);
+    if (horas === null || horas > 4) alertas.push({ nc: o.nc, cliente: o.cliente, fornecedor: nomeForn, horas });
+  });
+
+  document.getElementById('d-abertas').textContent = ocs.length;
+  document.getElementById('d-suspeita').textContent = totSuspeita;
+  document.getElementById('d-inspecionada').textContent = totInsp;
+  document.getElementById('d-pct-insp').textContent = (totSuspeita > 0 ? Math.round(totInsp / totSuspeita * 100) : 0) + '% do total suspeito';
+  document.getElementById('d-taxa-nok').textContent = (totInsp > 0 ? Math.round(totNok / totInsp * 100) : 0) + '%';
+
+  const alertasEl = document.getElementById('alertas-lista');
+  alertasEl.innerHTML = !alertas.length
+    ? '<div class="empty" style="padding:16px;">Nenhuma contenção parada — tudo em dia.</div>'
+    : alertas.map(a => `<div class="alert-item"><span><b>${a.nc}</b> — ${a.cliente} · ${a.fornecedor}</span><span class="alert-item-time">${a.horas == null ? 'sem apontamento ainda' : a.horas.toFixed(1) + 'h sem apontamento'}</span></div>`).join('');
+
+  renderHbar('hbar-fornecedor', porFornecedor);
+  renderHbar('hbar-cliente', porCliente);
+}
+function renderHbar(elId, dataObj){
+  const el = document.getElementById(elId);
+  const entries = Object.entries(dataObj || {});
+  if (!entries.length) { el.innerHTML = '<div class="empty" style="padding:16px;">Sem dados.</div>'; return; }
+  const max = Math.max(...entries.map(e => e[1]), 1);
+  el.innerHTML = entries.map(([label, val]) => `
+    <div class="hbar-row">
+      <div class="hbar-label">${label}</div>
+      <div class="hbar-track"><div class="hbar-fill" style="width:${Math.round(val / max * 100)}%"></div></div>
+      <div class="hbar-value">${val}</div>
+    </div>`).join('');
+}
+
+// ══════════════════════════ OCORRÊNCIAS (ADMIN) ══════════════════════════
+function renderOcorrenciasAdmin(){
+  if (!currentUser || currentUser.perfil !== 'admin') return;
+  const tbody = document.getElementById('oc-admin-tbody');
+  const ocs = ocorrenciasAdminCache.slice().sort((a, b) => fmtData(b.dataAbertura) < fmtData(a.dataAbertura) ? -1 : 1);
+  tbody.innerHTML = ocs.map(o => {
+    const forn = usuariosCache.find(u => u.id === o.usuarioId);
+    const t = totaisDaOcorrencia(o.id, apontamentosAdminCache);
+    const statusBadge = o.status === 'aberta' ? '<span class="badge badge-yellow">Aberta</span>' : '<span class="badge badge-green">Encerrada</span>';
+    return `<tr>
+      <td>${o.nc}</td><td>${o.cliente}</td><td>${o.descricao}</td><td>${forn ? forn.nome : '—'}</td>
+      <td>${fmtData(o.dataAbertura)}</td><td>${statusBadge}</td><td>${t.ultimoApontamento ? fmtDataHora(t.ultimoApontamento) : '—'}</td>
+      <td>${o.status === 'aberta' ? `<button class="btn btn-secondary btn-sm" onclick="openModalEncerrar('${o.id}')">Encerrar</button>` : ''}</td>
+    </tr>`;
+  }).join('');
+}
+function openModalNovaOcorrencia(){
+  document.getElementById('no-nc').value = '';
+  document.getElementById('no-desc').value = '';
+  document.getElementById('no-error').style.display = 'none';
+  document.getElementById('modal-nova-ocorrencia').classList.add('open');
+}
+async function salvarOcorrencia(){
+  const err = document.getElementById('no-error');
+  const nc = document.getElementById('no-nc').value.trim();
+  const cliente = document.getElementById('no-cliente').value;
+  const descricao = document.getElementById('no-desc').value.trim();
+  const usuarioId = document.getElementById('no-fornecedor').value;
+  if (!nc || !descricao || !usuarioId) { err.textContent = 'Preencha NC, descrição e responsável.'; err.style.display = 'block'; return; }
+  err.style.display = 'none';
+  try {
+    await db.collection('ocorrencias').add({ nc, cliente, descricao, dataAbertura: firebase.firestore.FieldValue.serverTimestamp(), usuarioId, status: 'aberta' });
+    closeModal('modal-nova-ocorrencia');
+  } catch (e) {
+    err.textContent = traduzErroFirebase(e); err.style.display = 'block';
+  }
+}
+function openModalEncerrar(id){ document.getElementById('enc-id').value = id; document.getElementById('modal-encerrar').classList.add('open'); }
+async function confirmarEncerrar(){
+  const id = document.getElementById('enc-id').value;
+  await db.collection('ocorrencias').doc(id).update({ status: 'encerrada' });
+  closeModal('modal-encerrar');
+}
+
+// ══════════════════════════ ADMIN (usuários / clientes) ══════════════════════════
+async function carregarUsuariosAdmin(){
+  const snap = await db.collection('usuarios').orderBy('nome').get();
+  usuariosCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+async function renderAdmin(){
+  if (!currentUser || currentUser.perfil !== 'admin') return;
+  await carregarUsuariosAdmin();
+  const el = document.getElementById('adm-usuarios-lista');
+  el.innerHTML = usuariosCache.map(u => {
+    const perfilLabel = u.perfil === 'admin' ? 'Administrador' : u.perfil === 'residente' ? 'Residente' : 'Fornecedor';
+    const perfilBadge = u.perfil === 'admin' ? 'badge-red' : u.perfil === 'residente' ? 'badge-yellow' : 'badge-green';
+    return `<div class="admin-item">
+      <div class="admin-item-info">
+        <b>${u.nome}</b> <span class="badge ${perfilBadge}">${perfilLabel}</span> ${u.ativo === false ? '<span class="badge badge-gray">Inativo</span>' : ''}
+        <div style="font-size:12px;color:var(--gray-500);">login: ${u.login || '—'}</div>
+      </div>
+      <div class="admin-item-actions">
+        <button class="btn btn-secondary btn-sm" onclick="openModalUsuario('${u.id}')">Editar</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  const cli = document.getElementById('clientes-admin-lista');
+  cli.innerHTML = clientesCache.map(c => `<span class="badge badge-gray" style="margin:2px 4px 2px 0;font-size:12px;padding:6px 10px;">${c}</span>`).join('');
+}
+function openModalUsuario(id){
+  const u = id ? usuariosCache.find(x => x.id === id) : null;
+  document.getElementById('us-modal-title').textContent = u ? 'Editar Usuário' : 'Novo Usuário';
+  document.getElementById('us-id').value = u ? u.id : '';
+  document.getElementById('us-nome').value = u ? u.nome : '';
+  document.getElementById('us-login').value = u ? (u.login || '') : '';
+  document.getElementById('us-login').disabled = !!u;
+  document.getElementById('us-login-hint').style.display = u ? 'block' : 'none';
+  document.getElementById('us-senha-wrap').style.display = u ? 'none' : '';
+  document.getElementById('us-senha').value = '';
+  document.getElementById('us-perfil').value = u ? u.perfil : 'fornecedor';
+  document.getElementById('us-ativo').checked = u ? u.ativo !== false : true;
+  document.getElementById('us-error').style.display = 'none';
+  document.getElementById('modal-usuario').classList.add('open');
+}
+async function salvarUsuario(){
+  const err = document.getElementById('us-error');
+  const id = document.getElementById('us-id').value;
+  const nome = document.getElementById('us-nome').value.trim();
+  const login = document.getElementById('us-login').value.trim().toLowerCase();
+  const senha = document.getElementById('us-senha').value;
+  const perfil = document.getElementById('us-perfil').value;
+  const ativo = document.getElementById('us-ativo').checked;
+  if (!nome || !login) { err.textContent = 'Preencha nome e login.'; err.style.display = 'block'; return; }
+  err.style.display = 'none';
+  try {
+    if (id) {
+      await db.collection('usuarios').doc(id).update({ nome, perfil, ativo });
+    } else {
+      if (!senha) { err.textContent = 'Defina uma senha para o novo usuário.'; err.style.display = 'block'; return; }
+      const cred = await secondaryAuth.createUserWithEmailAndPassword(login + EMAIL_DOMINIO, senha);
+      await db.collection('usuarios').doc(cred.user.uid).set({ nome, login, perfil, ativo: true });
+      await secondaryAuth.signOut();
+    }
+    closeModal('modal-usuario');
+    await renderAdmin();
+    await carregarListasApoio();
+  } catch (e) {
+    err.textContent = traduzErroFirebase(e); err.style.display = 'block';
+  }
+}
+async function adicionarCliente(){
+  const input = document.getElementById('cli-novo');
+  const nome = input.value.trim();
+  if (!nome || clientesCache.includes(nome)) return;
+  await db.collection('clientes').add({ nome });
+  input.value = '';
+  await carregarListasApoio();
+  await renderAdmin();
+}
+
+// ══════════════════════════ LISTAS DE APOIO (selects) ══════════════════════════
+async function carregarListasApoio(){
+  const snapCli = await db.collection('clientes').orderBy('nome').get();
+  clientesCache = snapCli.docs.map(d => d.data().nome);
+  const clienteOptions = clientesCache.map(x => `<option value="${x}">${x}</option>`).join('');
+  document.getElementById('h-cliente').innerHTML = '<option value="">Todos</option>' + clienteOptions;
+  document.getElementById('no-cliente').innerHTML = clienteOptions;
+  document.getElementById('db-cliente').innerHTML = '<option value="">Todos</option>' + clienteOptions;
+
+  if (currentUser.perfil === 'admin') {
+    const snapUs = await db.collection('usuarios').where('perfil', 'in', ['fornecedor', 'residente']).get();
+    fornecedoresCache = snapUs.docs.map(d => ({ id: d.id, nome: d.data().nome, ativo: d.data().ativo })).filter(u => u.ativo !== false);
+    const fornOptions = fornecedoresCache.map(u => `<option value="${u.id}">${u.nome}</option>`).join('');
+    document.getElementById('h-fornecedor').innerHTML = '<option value="">Todos</option>' + fornOptions;
+    document.getElementById('db-fornecedor').innerHTML = '<option value="">Todos</option>' + fornOptions;
+    document.getElementById('no-fornecedor').innerHTML = fornOptions;
+  }
+}
+
+// ══════════════════════════ MODAIS ══════════════════════════
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(ov => {
+  ov.addEventListener('click', e => { if (e.target === ov) ov.classList.remove('open'); });
+});
+</script>
+</body>
+</html>
