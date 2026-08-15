@@ -786,7 +786,7 @@ function htmlTimelineApontamentos(lista, editavel){
     <div class="timeline-item">
       <div class="timeline-dot ${i === lista.length - 1 ? 'first' : ''}"></div>
       <div class="timeline-content">
-        <div class="timeline-time">${fmtDataCurta(a.dataHora)}${editavel ? ` <button type="button" class="btn-edit-timeline" onclick="event.stopPropagation();editarApontamento('${a.id}')" title="Editar este apontamento">✏️</button>` : ''}</div>
+        <div class="timeline-time">${fmtDataCurta(a.dataHora)}${a.registradoPor && a.registradoPor !== a.usuarioId ? ' <span class="badge badge-gray" style="font-size:9px;">residente</span>' : ''}${editavel ? ` <button type="button" class="btn-edit-timeline" onclick="event.stopPropagation();editarApontamento('${a.id}')" title="Editar este apontamento">✏️</button>` : ''}</div>
         <div class="timeline-meta">Insp: <b>${a.inspecionada}</b> · OK: <b style="color:var(--green)">${a.ok}</b> · NOK: <b style="color:var(--alert)">${a.nok}</b></div>
       </div>
     </div>`).join('');
@@ -855,7 +855,9 @@ function renderMinhas(){
     let badge = '<span class="badge badge-yellow">Em andamento</span>';
     if (concluido) badge = '<span class="badge badge-green">100% inspecionado</span>';
     else if (parada) badge = '<span class="badge badge-red">Sem apontamento +4h</span>';
-    const souDono = o.usuarioId === currentUser.uid;
+    // Residente atende todos os clientes, então pode agir em qualquer
+    // contenção — não só nas que estão no nome dele.
+    const podeAgir = o.usuarioId === currentUser.uid || souResidenteVendoTudo;
     const nomeForn = souResidenteVendoTudo ? (usuariosCache.find(u => u.id === o.usuarioId) || {}).nome : null;
     return `<div class="oc-card ${parada ? 'parada' : ''}">
       <div class="oc-card-top">
@@ -879,8 +881,8 @@ function renderMinhas(){
         <div><b style="color:var(--green)">${t.ok}</b><span>OK</span></div>
         <div><b style="color:var(--alert)">${t.nok}</b><span>NOK</span></div>
       </div>
-      ${meusApontamentosCache.some(a => a.ocorrenciaId === o.id) ? `<div class="timeline" style="max-height:130px;margin-bottom:10px;">${htmlTimelineApontamentos(ordenarApontamentosDesc(meusApontamentosCache.filter(a => a.ocorrenciaId === o.id)), souDono)}</div>` : ''}
-      ${!souDono
+      ${meusApontamentosCache.some(a => a.ocorrenciaId === o.id) ? `<div class="timeline" style="max-height:130px;margin-bottom:10px;">${htmlTimelineApontamentos(ordenarApontamentosDesc(meusApontamentosCache.filter(a => a.ocorrenciaId === o.id)), podeAgir)}</div>` : ''}
+      ${!podeAgir
         ? '<button class="btn btn-secondary btn-block" disabled>👁️ Somente visualização</button>'
         : concluido
           ? '<button class="btn btn-secondary btn-block" disabled>✅ Concluído</button>'
@@ -996,8 +998,14 @@ async function salvarApontamento(){
     if (editId) {
       await db.collection('apontamentos').doc(editId).update(dados);
     } else {
+      // O apontamento fica no nome de quem É DONO da ocorrência (pra não
+      // quebrar a leitura do fornecedor caso quem esteja lançando seja o
+      // Residente agindo em nome dele). "registradoPor" guarda quem
+      // realmente apertou salvar, pra manter rastreabilidade.
+      const oc = minhasOcorrenciasCache.find(x => x.id === ocorrenciaId);
       dados.ocorrenciaId = ocorrenciaId;
-      dados.usuarioId = currentUser.uid;
+      dados.usuarioId = oc ? oc.usuarioId : currentUser.uid;
+      dados.registradoPor = currentUser.uid;
       dados.dataHora = firebase.firestore.FieldValue.serverTimestamp();
       await db.collection('apontamentos').add(dados);
     }
