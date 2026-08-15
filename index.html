@@ -154,6 +154,8 @@
   .timeline-content{flex:1;}
   .timeline-time{font-weight:700;color:var(--gray-700);font-size:12px;}
   .timeline-meta{color:var(--gray-500);font-size:12px;margin-top:2px;line-height:1.5;}
+  .btn-edit-timeline{background:none;border:none;cursor:pointer;font-size:11px;padding:0;opacity:.55;vertical-align:middle;}
+  .btn-edit-timeline:hover{opacity:1;}
 
   @media (max-width:720px){
     .form-row,.form-row-4{grid-template-columns:1fr;}
@@ -748,13 +750,13 @@ function fmtDataCurta(ts){
 function ordenarApontamentosDesc(lista){
   return lista.slice().sort((a, b) => (b.dataHora && b.dataHora.toMillis ? b.dataHora.toMillis() : 0) - (a.dataHora && a.dataHora.toMillis ? a.dataHora.toMillis() : 0));
 }
-function htmlTimelineApontamentos(lista){
+function htmlTimelineApontamentos(lista, editavel){
   if (!lista.length) return '<div class="empty" style="padding:12px;">Nenhum apontamento registrado ainda.</div>';
   return lista.map((a, i) => `
     <div class="timeline-item">
       <div class="timeline-dot ${i === lista.length - 1 ? 'first' : ''}"></div>
       <div class="timeline-content">
-        <div class="timeline-time">${fmtDataCurta(a.dataHora)}</div>
+        <div class="timeline-time">${fmtDataCurta(a.dataHora)}${editavel ? ` <button type="button" class="btn-edit-timeline" onclick="event.stopPropagation();editarApontamento('${a.id}')" title="Editar este apontamento">✏️</button>` : ''}</div>
         <div class="timeline-meta">Insp: <b>${a.inspecionada}</b> · OK: <b style="color:var(--green)">${a.ok}</b> · NOK: <b style="color:var(--alert)">${a.nok}</b></div>
       </div>
     </div>`).join('');
@@ -842,7 +844,7 @@ function renderMinhas(){
         <div><b style="color:var(--green)">${t.ok}</b><span>OK</span></div>
         <div><b style="color:var(--alert)">${t.nok}</b><span>NOK</span></div>
       </div>
-      ${meusApontamentosCache.some(a => a.ocorrenciaId === o.id) ? `<div class="timeline" style="max-height:130px;margin-bottom:10px;">${htmlTimelineApontamentos(ordenarApontamentosDesc(meusApontamentosCache.filter(a => a.ocorrenciaId === o.id)))}</div>` : ''}
+      ${meusApontamentosCache.some(a => a.ocorrenciaId === o.id) ? `<div class="timeline" style="max-height:130px;margin-bottom:10px;">${htmlTimelineApontamentos(ordenarApontamentosDesc(meusApontamentosCache.filter(a => a.ocorrenciaId === o.id)), true)}</div>` : ''}
       ${concluido
         ? '<button class="btn btn-secondary btn-block" disabled>✅ Concluído</button>'
         : `<button class="btn btn-primary btn-block" onclick="openModalApontamento('${o.id}')">${t.inspecionada > 0 ? '🔄 Atualizar Apontamento' : '+ Registrar Apontamento'}</button>`}
@@ -855,6 +857,8 @@ function openModalApontamento(ocId){
   const o = minhasOcorrenciasCache.find(x => x.id === ocId);
   if (!o) return;
   const t = totaisDaOcorrencia(o.id, meusApontamentosCache);
+  delete document.getElementById('modal-apontamento').dataset.editId;
+  document.getElementById('ap-btn-salvar').textContent = 'Salvar Apontamento';
   document.getElementById('modal-apontamento').dataset.ocId = ocId;
   document.getElementById('modal-apontamento').querySelector('h2').textContent = t.inspecionada > 0 ? 'Atualizar Apontamento' : 'Registrar Apontamento';
   document.getElementById('ap-oc-info').textContent = `${o.nc} — ${o.cliente}`;
@@ -878,7 +882,7 @@ function openModalApontamento(ocId){
   const timelineWrap = document.getElementById('ap-timeline-wrap');
   if (historicoOc.length) {
     timelineWrap.style.display = 'block';
-    document.getElementById('ap-timeline').innerHTML = htmlTimelineApontamentos(historicoOc);
+    document.getElementById('ap-timeline').innerHTML = htmlTimelineApontamentos(historicoOc, true);
   } else {
     timelineWrap.style.display = 'none';
   }
@@ -886,37 +890,85 @@ function openModalApontamento(ocId){
   document.getElementById('ap-error').style.display = 'none';
   document.getElementById('modal-apontamento').classList.add('open');
 }
+// Reabre o mesmo modal em modo edição, preenchido com os valores do
+// apontamento escolhido — pra corrigir um lançamento errado sem precisar
+// mexer direto no Firestore.
+function editarApontamento(apontamentoId){
+  const a = meusApontamentosCache.find(x => x.id === apontamentoId);
+  if (!a) return;
+  const o = minhasOcorrenciasCache.find(x => x.id === a.ocorrenciaId);
+  if (!o) return;
+  const t = totaisDaOcorrencia(o.id, meusApontamentosCache);
+  const inspecionadaOutros = t.inspecionada - a.inspecionada;
+  const disponivel = Math.max(0, t.suspeita - inspecionadaOutros);
+
+  const modal = document.getElementById('modal-apontamento');
+  modal.dataset.ocId = o.id;
+  modal.dataset.editId = apontamentoId;
+  modal.querySelector('h2').textContent = 'Editar Apontamento';
+  document.getElementById('ap-oc-info').textContent = `${o.nc} — ${o.cliente}`;
+  document.getElementById('ap-oc-detalhe').innerHTML = `
+    <div><span>Suspeita (total)</span>${t.suspeita}</div>
+    <div><span>Inspecionado (outros registros)</span>${inspecionadaOutros}</div>
+    <div><span>Disponível para este registro</span>${disponivel}</div>`;
+  document.getElementById('ap-tipo').value = a.tipo || '100%';
+  document.getElementById('ap-peca').value = a.peca || '';
+  document.getElementById('ap-suspeita').value = t.suspeita || '';
+  document.getElementById('ap-inspecionada').value = a.inspecionada;
+  document.getElementById('ap-inspecionada').max = disponivel;
+  document.getElementById('ap-ok').value = a.ok;
+  document.getElementById('ap-nok').value = a.nok;
+  document.getElementById('ap-obs').value = a.obs || '';
+  document.getElementById('ap-timeline-wrap').style.display = 'none';
+  document.getElementById('ap-error').style.display = 'none';
+  document.getElementById('ap-btn-salvar').textContent = 'Salvar Alteração';
+  modal.classList.add('open');
+}
 async function salvarApontamento(){
-  const ocorrenciaId = document.getElementById('modal-apontamento').dataset.ocId;
+  const modal = document.getElementById('modal-apontamento');
+  const ocorrenciaId = modal.dataset.ocId;
+  const editId = modal.dataset.editId || '';
   const err = document.getElementById('ap-error');
+  const suspeita = Number(document.getElementById('ap-suspeita').value) || 0;
   const inspecionada = Number(document.getElementById('ap-inspecionada').value) || 0;
   const ok = Number(document.getElementById('ap-ok').value) || 0;
   const nok = Number(document.getElementById('ap-nok').value) || 0;
   if (inspecionada <= 0 || ok + nok !== inspecionada) {
     err.textContent = 'OK + NOK deve ser igual à quantidade inspecionada.'; err.style.display = 'block'; return;
   }
-  const t = totaisDaOcorrencia(ocorrenciaId, meusApontamentosCache);
-  const restante = t.suspeita - t.inspecionada;
+  // Soma os OUTROS apontamentos (excluindo este, se estiver editando um já existente)
+  // pra validar contra o total suspeito sem contar o próprio registro duas vezes.
+  const inspecionadaOutros = meusApontamentosCache
+    .filter(a => a.ocorrenciaId === ocorrenciaId && a.id !== editId)
+    .reduce((s, a) => s + (a.inspecionada || 0), 0);
+  const restante = suspeita - inspecionadaOutros;
   if (inspecionada > restante) {
-    err.textContent = `A soma das quantidades inspecionadas não pode ultrapassar o total suspeito (restam ${restante} peça${restante === 1 ? '' : 's'}).`;
+    err.textContent = `A soma das quantidades inspecionadas não pode ultrapassar o total suspeito (disponível: ${Math.max(0, restante)} peça${restante === 1 ? '' : 's'}).`;
     err.style.display = 'block';
     return;
   }
   err.style.display = 'none';
   const btn = document.getElementById('ap-btn-salvar');
+  const textoOriginal = btn.textContent;
   btn.disabled = true; btn.textContent = 'Salvando...';
   try {
-    await db.collection('apontamentos').add({
-      ocorrenciaId, usuarioId: currentUser.uid, dataHora: firebase.firestore.FieldValue.serverTimestamp(),
+    const dados = {
       tipo: document.getElementById('ap-tipo').value, peca: document.getElementById('ap-peca').value.trim(),
-      suspeita: Number(document.getElementById('ap-suspeita').value) || 0, inspecionada, ok, nok,
-      obs: document.getElementById('ap-obs').value.trim()
-    });
+      suspeita, inspecionada, ok, nok, obs: document.getElementById('ap-obs').value.trim()
+    };
+    if (editId) {
+      await db.collection('apontamentos').doc(editId).update(dados);
+    } else {
+      dados.ocorrenciaId = ocorrenciaId;
+      dados.usuarioId = currentUser.uid;
+      dados.dataHora = firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection('apontamentos').add(dados);
+    }
     closeModal('modal-apontamento');
   } catch (e) {
     err.textContent = traduzErroFirebase(e); err.style.display = 'block';
   } finally {
-    btn.disabled = false; btn.textContent = 'Salvar Apontamento';
+    btn.disabled = false; btn.textContent = textoOriginal;
   }
 }
 
