@@ -778,6 +778,7 @@ function fmtDataCurta(ts){
   const pad = n => String(n).padStart(2, '0');
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${String(d.getFullYear()).slice(-2)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
+function fmtSeq(n){ return n ? '#' + String(n).padStart(4, '0') : ''; }
 function ordenarApontamentosDesc(lista){
   return lista.slice().sort((a, b) => (b.dataHora && b.dataHora.toMillis ? b.dataHora.toMillis() : 0) - (a.dataHora && a.dataHora.toMillis ? a.dataHora.toMillis() : 0));
 }
@@ -863,10 +864,10 @@ function renderMinhas(){
     return `<div class="oc-card ${parada ? 'parada' : ''}">
       <div class="oc-card-top">
         <div>
-          <div class="oc-card-nc">${o.numeroSequencial ? `<span style="color:var(--steel);">#${o.numeroSequencial}</span> ` : ''}${o.nc}${o.pnMrhb ? ` · PN ${o.pnMrhb}` : ''}</div>
-          <div style="font-size:11px;color:var(--gray-500);">${o.cliente}${o.pnCliente ? ` · Cliente: ${o.pnCliente}` : ''}</div>
+          <div class="oc-card-nc">${o.numeroSequencial ? `<span style="color:var(--steel);">${fmtSeq(o.numeroSequencial)}</span> ` : ''}${o.nc}</div>
+          <div style="font-size:11px;color:var(--gray-500);">${o.cliente}${o.pnMrhb ? ` · PN MRHB: ${o.pnMrhb}` : ''}${o.pnCliente ? ` · PN Cliente: ${o.pnCliente}` : ''}</div>
           ${nomeForn ? `<div style="font-size:11px;color:var(--gray-500);">Fornecedor: ${nomeForn}</div>` : ''}
-          ${o.responsavel ? `<div style="font-size:11px;color:var(--gray-500);">Autorizado por: ${o.responsavel}</div>` : ''}
+          ${o.responsavel ? `<div style="font-size:11px;color:var(--gray-500);">Analista Responsável: ${o.responsavel}</div>` : ''}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
           ${badge}
@@ -901,7 +902,7 @@ function openModalApontamento(ocId){
   document.getElementById('ap-btn-salvar').textContent = 'Salvar Apontamento';
   document.getElementById('modal-apontamento').dataset.ocId = ocId;
   document.getElementById('modal-apontamento').querySelector('h2').textContent = t.inspecionada > 0 ? 'Atualizar Apontamento' : 'Registrar Apontamento';
-  document.getElementById('ap-oc-info').textContent = (o.numeroSequencial ? '#' + o.numeroSequencial + ' — ' : '') + `${o.nc} — ${o.cliente}`;
+  document.getElementById('ap-oc-info').textContent = (o.numeroSequencial ? fmtSeq(o.numeroSequencial) + ' — ' : '') + `${o.nc} — ${o.cliente}`;
   const restante = Math.max(0, t.suspeita - t.inspecionada);
   document.getElementById('ap-oc-detalhe').innerHTML = `
     <div><span>Suspeita (total)</span>${t.suspeita}</div>
@@ -946,7 +947,7 @@ function editarApontamento(apontamentoId){
   modal.dataset.ocId = o.id;
   modal.dataset.editId = apontamentoId;
   modal.querySelector('h2').textContent = 'Editar Apontamento';
-  document.getElementById('ap-oc-info').textContent = (o.numeroSequencial ? '#' + o.numeroSequencial + ' — ' : '') + `${o.nc} — ${o.cliente}`;
+  document.getElementById('ap-oc-info').textContent = (o.numeroSequencial ? fmtSeq(o.numeroSequencial) + ' — ' : '') + `${o.nc} — ${o.cliente}`;
   document.getElementById('ap-oc-detalhe').innerHTML = `
     <div><span>Suspeita (total)</span>${t.suspeita}</div>
     <div><span>Inspecionado (outros registros)</span>${inspecionadaOutros}</div>
@@ -1121,7 +1122,7 @@ function renderOcorrenciasAdmin(){
     const t = totaisDaOcorrencia(o.id, apontamentosAdminCache, o);
     const statusBadge = o.status === 'aberta' ? '<span class="badge badge-yellow">Aberta</span>' : '<span class="badge badge-green">Encerrada</span>';
     return `<tr>
-      <td>${o.numeroSequencial ? '#' + o.numeroSequencial : '—'}</td><td>${o.nc}</td><td>${o.cliente}</td><td>${o.pnMrhb || '—'}</td><td>${o.pnCliente || '—'}</td><td>${o.responsavel || '—'}</td><td>${o.descricao}</td><td>${forn ? forn.nome : '—'}</td>
+      <td>${fmtSeq(o.numeroSequencial) || '—'}</td><td>${o.nc}</td><td>${o.cliente}</td><td>${o.pnMrhb || '—'}</td><td>${o.pnCliente || '—'}</td><td>${o.responsavel || '—'}</td><td>${o.descricao}</td><td>${forn ? forn.nome : '—'}</td>
       <td>${fmtData(o.dataAbertura)}</td><td>${statusBadge}</td><td>${t.ultimoApontamento ? fmtDataHora(t.ultimoApontamento) : '—'}</td>
       <td>${o.status === 'aberta' ? `<button class="btn btn-secondary btn-sm" onclick="openModalEncerrar('${o.id}')">Encerrar</button>` : ''}</td>
     </tr>`;
