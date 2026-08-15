@@ -65,10 +65,21 @@
   .btn-auto{width:auto;}
 
   .main{max-width:1400px;margin:0 auto;padding:24px 16px;}
-  .nav-tabs{display:flex;gap:4px;background:var(--white);padding:6px;border-radius:8px;margin-bottom:24px;box-shadow:0 1px 4px rgba(0,0,0,0.08);}
-  .nav-tab{flex:1;padding:10px;border:none;background:transparent;border-radius:5px;font-size:13px;font-weight:600;cursor:pointer;color:var(--gray-500);font-family:var(--font);}
-  .nav-tab.active{background:var(--red);color:white;}
-  .nav-tab:hover:not(.active){background:var(--gray-100);}
+  .nav-tabs{display:flex;flex-direction:column;gap:10px;background:transparent;padding:0;margin-bottom:24px;box-shadow:none;}
+  .nav-tab{display:flex;align-items:center;gap:12px;width:100%;padding:16px 22px;border:none;border-radius:999px;font-size:15px;font-weight:700;cursor:pointer;color:white;font-family:var(--font);box-shadow:0 2px 6px rgba(0,0,0,0.18);transition:transform .15s ease,box-shadow .15s ease,filter .15s ease;}
+  .nav-tab-icon{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.28);font-size:15px;flex:none;}
+  .nav-tab:active{transform:scale(.98);}
+  .nav-tab:hover:not(.active){filter:brightness(1.08);}
+  .nav-tab.active{box-shadow:0 4px 16px rgba(0,0,0,0.28);outline:3px solid rgba(255,255,255,.7);outline-offset:-3px;}
+  .nav-tab:nth-of-type(1){background:linear-gradient(135deg,#3B7CA8,#1B3A5C);}
+  .nav-tab:nth-of-type(2){background:linear-gradient(135deg,#8E5FD1,#5C3A96);}
+  .nav-tab:nth-of-type(3){background:linear-gradient(135deg,#1A7A3C,#125C2C);}
+  .nav-tab:nth-of-type(4){background:linear-gradient(135deg,#E8A93B,#B9791A);}
+  .nav-tab:nth-of-type(5){background:linear-gradient(135deg,#C0392B,#8E2A20);}
+  @media (min-width:900px){
+    .nav-tabs{flex-direction:row;flex-wrap:wrap;}
+    .nav-tab{width:auto;flex:1;min-width:180px;justify-content:center;}
+  }
   .tab-content{display:none;}.tab-content.active{display:block;}
 
   .card{background:var(--white);border-radius:8px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08);margin-bottom:16px;}
@@ -170,9 +181,8 @@
 <div class="screen active" id="screen-login">
   <div class="login-wrap">
     <div class="login-card">
-      <div class="login-logo"><div class="login-logo-box">🛡️</div></div>
-      <h1>Contenção CS1<br>Terceiros &amp; Residente</h1>
-      <p>Apontamento em tempo real de inspeção</p>
+      <div class="login-logo"><div class="login-logo-box">🔍</div></div>
+      <h1>Contenção App</h1>
       <span class="login-accent"></span>
       <div class="form-group">
         <label>Usuário</label>
@@ -209,11 +219,11 @@
 
   <div class="main">
     <div class="nav-tabs" id="nav-tabs">
-      <button class="nav-tab active" id="btn-tab-minhas" onclick="showTab('minhas')">📋 Minhas Contenções</button>
-      <button class="nav-tab" id="btn-tab-historico" onclick="showTab('historico')">🕘 Histórico</button>
-      <button class="nav-tab" id="btn-tab-dashboard" style="display:none" onclick="showTab('dashboard')">📊 Dashboard</button>
-      <button class="nav-tab" id="btn-tab-ocorrencias" style="display:none" onclick="showTab('ocorrencias')">🗂 Ocorrências</button>
-      <button class="nav-tab" id="btn-tab-admin" style="display:none" onclick="showTab('admin')">⚙ Admin</button>
+      <button class="nav-tab active" id="btn-tab-minhas" onclick="showTab('minhas')"><span class="nav-tab-icon">📋</span>Contenções em Andamento</button>
+      <button class="nav-tab" id="btn-tab-historico" onclick="showTab('historico')"><span class="nav-tab-icon">🕘</span>Histórico</button>
+      <button class="nav-tab" id="btn-tab-dashboard" style="display:none" onclick="showTab('dashboard')"><span class="nav-tab-icon">📊</span>Dashboard</button>
+      <button class="nav-tab" id="btn-tab-ocorrencias" style="display:none" onclick="showTab('ocorrencias')"><span class="nav-tab-icon">🗂</span>Ocorrências</button>
+      <button class="nav-tab" id="btn-tab-admin" style="display:none" onclick="showTab('admin')"><span class="nav-tab-icon">⚙</span>Admin</button>
     </div>
 
     <!-- MINHAS CONTENÇÕES (fornecedor/residente) -->
