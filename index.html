@@ -528,8 +528,9 @@
     <div class="modal-sub">Abertura de contenção — atribuída a um fornecedor ou ao residente.</div>
     <div class="form-row">
       <div class="form-group"><label>Nº da NC <span style="color:var(--alert)">*</span></label><input type="text" id="no-nc" placeholder="Ex: NC-2026-0170"></div>
-      <div class="form-group"><label>Cliente <span style="color:var(--alert)">*</span></label><select id="no-cliente"></select></div>
+      <div class="form-group"><label>Cliente <span style="color:var(--alert)">*</span></label><select id="no-cliente" onchange="atualizarFornecedorPeloCliente(this.value)"></select></div>
     </div>
+    <div class="field-hint" id="no-residente-forn-hint" style="display:none"></div>
     <div class="form-row">
       <div class="form-group" id="no-pn-mrhb-wrap">
         <label>Nº peça MRHB</label>
@@ -1155,7 +1156,32 @@ function openModalNovaOcorrencia(){
     document.getElementById('no-cliente').innerHTML = clienteOptions;
   }
 
+  document.getElementById('no-residente-forn-hint').style.display = 'none';
+  atualizarFornecedorPeloCliente(document.getElementById('no-cliente').value);
   document.getElementById('modal-nova-ocorrencia').classList.add('open');
+}
+// Acha qual fornecedor atende um cliente (campo "Cliente que atende" do
+// cadastro de usuário). Usado pra rotear a contenção automaticamente.
+function fornecedorPorCliente(cliente){
+  if (!cliente) return null;
+  return usuariosCache.find(u => u.perfil === 'fornecedor' && u.clienteAtendido === cliente && u.ativo !== false) || null;
+}
+// Admin: sugere o fornecedor no select (mas ele pode trocar à vontade).
+// Residente: não escolhe fornecedor nenhum — só mostra pra quem vai a
+// contenção, porque o campo de responsável fica escondido pra ele.
+function atualizarFornecedorPeloCliente(cliente){
+  if (currentUser.perfil === 'admin') {
+    const forn = fornecedorPorCliente(cliente);
+    if (forn) document.getElementById('no-fornecedor').value = forn.id;
+  } else if (currentUser.perfil === 'residente') {
+    const hint = document.getElementById('no-residente-forn-hint');
+    if (!cliente) { hint.style.display = 'none'; return; }
+    const forn = fornecedorPorCliente(cliente);
+    hint.style.display = 'block';
+    hint.textContent = forn
+      ? `Esta contenção vai ser atribuída ao fornecedor: ${forn.nome}`
+      : `Nenhum fornecedor está configurado para atender ${cliente} — peça pro admin configurar em Admin ▸ Usuários antes de abrir esta contenção.`;
+  }
 }
 // Busca automática (admin/residente): ao digitar o PN MRHB, preenche PN
 // Cliente + Cliente + Autorizado por. Se o PN aparecer em mais de um
@@ -1210,6 +1236,7 @@ function aplicarMatchPn(m){
   document.getElementById('no-pn-mrhb').value = m.pnMrhb;
   document.getElementById('no-pn-cliente').value = m.pnCliente;
   document.getElementById('no-cliente').value = m.cliente;
+  atualizarFornecedorPeloCliente(m.cliente); // .value não dispara onchange sozinho
   document.getElementById('no-pn-opcoes').dataset.responsavel = m.responsavel || '';
   const hint = document.getElementById('no-pn-hint');
   hint.innerHTML = currentUser.perfil === 'fornecedor'
@@ -1235,10 +1262,28 @@ async function salvarOcorrencia(){
   const cliente = document.getElementById('no-cliente').value;
   const descricao = document.getElementById('no-desc').value.trim();
   const suspeitaInicial = Number(document.getElementById('no-suspeita').value) || 0;
-  const usuarioId = currentUser.perfil === 'admin' ? document.getElementById('no-fornecedor').value : currentUser.uid;
   const pnMrhb = document.getElementById('no-pn-mrhb').value.trim();
   const pnCliente = document.getElementById('no-pn-cliente').value.trim();
   const responsavel = document.getElementById('no-pn-opcoes').dataset.responsavel || '';
+
+  // Fornecedor abre pra si mesmo. Admin escolhe no select. Residente não
+  // escolhe — o sistema descobre sozinho quem atende o cliente selecionado
+  // e a contenção já nasce na fila desse fornecedor.
+  let usuarioId;
+  if (currentUser.perfil === 'admin') {
+    usuarioId = document.getElementById('no-fornecedor').value;
+  } else if (currentUser.perfil === 'residente') {
+    const forn = fornecedorPorCliente(cliente);
+    if (!forn) {
+      err.textContent = `Nenhum fornecedor está configurado para atender ${cliente || 'esse cliente'}. Peça pro admin configurar em Admin ▸ Usuários.`;
+      err.style.display = 'block';
+      return;
+    }
+    usuarioId = forn.id;
+  } else {
+    usuarioId = currentUser.uid;
+  }
+
   if (!nc || !descricao || !usuarioId || suspeitaInicial <= 0) {
     err.textContent = 'Preencha NC, quantidade de peças suspeitas, descrição e responsável.'; err.style.display = 'block'; return;
   }
