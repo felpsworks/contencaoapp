@@ -297,7 +297,7 @@
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>NC</th><th>Cliente</th><th>PN MRHB</th><th>PN Cliente</th><th>Autorizado por</th><th>Descrição</th><th>Fornecedor</th><th>Abertura</th><th>Status</th><th>Último apont.</th><th></th></tr></thead>
+            <thead><tr><th>#</th><th>NC</th><th>Cliente</th><th>PN MRHB</th><th>PN Cliente</th><th>Autorizado por</th><th>Descrição</th><th>Fornecedor</th><th>Abertura</th><th>Status</th><th>Último apont.</th><th></th></tr></thead>
             <tbody id="oc-admin-tbody"></tbody>
           </table>
         </div>
@@ -531,17 +531,18 @@
       <div class="form-group"><label>Cliente <span style="color:var(--alert)">*</span></label><select id="no-cliente"></select></div>
     </div>
     <div class="form-row">
-      <div class="form-group">
+      <div class="form-group" id="no-pn-mrhb-wrap">
         <label>Nº peça MRHB</label>
         <input type="text" id="no-pn-mrhb" placeholder="Ex: 2569" oninput="onPnMrhbInput()">
       </div>
       <div class="form-group">
         <label>Nº peça Cliente</label>
-        <input type="text" id="no-pn-cliente" placeholder="Preenche sozinho ao digitar o PN MRHB">
+        <input type="text" id="no-pn-cliente" placeholder="Preenche sozinho ao digitar o PN MRHB" oninput="onPnClienteInput()">
       </div>
     </div>
     <div id="no-pn-opcoes" style="display:none;margin:-10px 0 14px;"></div>
     <div class="field-hint" id="no-pn-hint" style="display:none"></div>
+    <div class="form-group"><label>Quantidade de Peças Suspeitas <span style="color:var(--alert)">*</span></label><input type="number" id="no-suspeita" min="1" placeholder="Ex: 1600"></div>
     <div class="form-group"><label>Descrição da não conformidade <span style="color:var(--alert)">*</span></label><textarea id="no-desc" rows="2"></textarea></div>
     <div class="form-group" id="no-fornecedor-wrap"><label>Responsável pela contenção <span style="color:var(--alert)">*</span></label><select id="no-fornecedor"></select></div>
     <div class="field-error" id="no-error"></div>
@@ -565,7 +566,12 @@
     </div>
     <div class="field-hint" id="us-login-hint" style="display:none">O login não pode ser alterado depois de criado.</div>
     <div class="form-group"><label>Perfil <span style="color:var(--alert)">*</span></label>
-      <select id="us-perfil"><option value="fornecedor">Empresa Terceira (Fornecedor)</option><option value="residente">Residente</option><option value="admin">Administrador (Qualidade)</option></select>
+      <select id="us-perfil" onchange="onUsPerfilChange()"><option value="fornecedor">Empresa Terceira (Fornecedor)</option><option value="residente">Residente</option><option value="admin">Administrador (Qualidade)</option></select>
+    </div>
+    <div class="form-group" id="us-cliente-wrap">
+      <label>Cliente que atende</label>
+      <select id="us-cliente"><option value="">— nenhum —</option></select>
+      <div class="field-hint">Ao abrir uma contenção, esse fornecedor só vai poder escolher esse cliente.</div>
     </div>
     <div class="form-check"><input type="checkbox" id="us-ativo" checked><label for="us-ativo">Usuário ativo</label></div>
     <div class="field-error" id="us-error"></div>
@@ -676,7 +682,7 @@ auth.onAuthStateChanged(async (user) => {
     return;
   }
   const d = doc.data();
-  currentUser = { uid: user.uid, nome: d.nome, perfil: d.perfil };
+  currentUser = { uid: user.uid, nome: d.nome, perfil: d.perfil, clienteAtendido: d.clienteAtendido || '' };
   document.getElementById('screen-login').classList.remove('active');
   document.getElementById('screen-app').classList.add('active');
   document.getElementById('header-user-name').textContent = currentUser.nome;
@@ -790,8 +796,9 @@ function horasDesdeTs(ts){
   const d = ts.toDate ? ts.toDate() : new Date(ts);
   return (Date.now() - d.getTime()) / 3600000;
 }
-function totaisDaOcorrencia(ocId, apontamentos){
+function totaisDaOcorrencia(ocId, apontamentos, ocorrencia){
   const lista = apontamentos.filter(a => a.ocorrenciaId === ocId);
+  const base = { suspeita: (ocorrencia && ocorrencia.suspeitaInicial) || 0, inspecionada: 0, ok: 0, nok: 0, ultimoApontamento: null, primeiroApontamento: null };
   return lista.reduce((t, a) => ({
     suspeita: Math.max(t.suspeita, a.suspeita || 0),
     inspecionada: t.inspecionada + (a.inspecionada || 0),
@@ -799,7 +806,7 @@ function totaisDaOcorrencia(ocId, apontamentos){
     nok: t.nok + (a.nok || 0),
     ultimoApontamento: (!t.ultimoApontamento || (a.dataHora && a.dataHora.toMillis && a.dataHora.toMillis() > t.ultimoApontamento.toMillis())) ? a.dataHora : t.ultimoApontamento,
     primeiroApontamento: (!t.primeiroApontamento || (a.dataHora && a.dataHora.toMillis && a.dataHora.toMillis() < t.primeiroApontamento.toMillis())) ? a.dataHora : t.primeiroApontamento
-  }), { suspeita: 0, inspecionada: 0, ok: 0, nok: 0, ultimoApontamento: null, primeiroApontamento: null });
+  }), base);
 }
 // Arredondar sempre pra inteiro esconde percentuais pequenos (ex: 3 NOK em
 // 845 peças = 0,35%, virava "0%" e parecia que não tinha NOK nenhum).
@@ -838,7 +845,7 @@ function renderMinhas(){
   if (!ocs.length) { grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">✅</div>Nenhuma contenção em aberto no momento.</div>'; return; }
   const souResidenteVendoTudo = currentUser.perfil === 'residente';
   grid.innerHTML = ocs.map(o => {
-    const t = totaisDaOcorrencia(o.id, meusApontamentosCache);
+    const t = totaisDaOcorrencia(o.id, meusApontamentosCache, o);
     const pct = t.suspeita > 0 ? Math.min(100, Math.round(t.inspecionada / t.suspeita * 100)) : 0;
     const concluido = t.suspeita > 0 && t.inspecionada >= t.suspeita;
     const horas = horasDesdeTs(t.ultimoApontamento);
@@ -853,7 +860,7 @@ function renderMinhas(){
     return `<div class="oc-card ${parada ? 'parada' : ''}">
       <div class="oc-card-top">
         <div>
-          <div class="oc-card-nc">${o.nc}${o.pnMrhb ? ` · PN ${o.pnMrhb}` : ''}</div>
+          <div class="oc-card-nc">${o.numeroSequencial ? `<span style="color:var(--steel);">#${o.numeroSequencial}</span> ` : ''}${o.nc}${o.pnMrhb ? ` · PN ${o.pnMrhb}` : ''}</div>
           <div style="font-size:11px;color:var(--gray-500);">${o.cliente}${o.pnCliente ? ` · Cliente: ${o.pnCliente}` : ''}</div>
           ${nomeForn ? `<div style="font-size:11px;color:var(--gray-500);">Fornecedor: ${nomeForn}</div>` : ''}
           ${o.responsavel ? `<div style="font-size:11px;color:var(--gray-500);">Autorizado por: ${o.responsavel}</div>` : ''}
@@ -886,12 +893,12 @@ function renderMinhas(){
 function openModalApontamento(ocId){
   const o = minhasOcorrenciasCache.find(x => x.id === ocId);
   if (!o) return;
-  const t = totaisDaOcorrencia(o.id, meusApontamentosCache);
+  const t = totaisDaOcorrencia(o.id, meusApontamentosCache, o);
   delete document.getElementById('modal-apontamento').dataset.editId;
   document.getElementById('ap-btn-salvar').textContent = 'Salvar Apontamento';
   document.getElementById('modal-apontamento').dataset.ocId = ocId;
   document.getElementById('modal-apontamento').querySelector('h2').textContent = t.inspecionada > 0 ? 'Atualizar Apontamento' : 'Registrar Apontamento';
-  document.getElementById('ap-oc-info').textContent = `${o.nc} — ${o.cliente}`;
+  document.getElementById('ap-oc-info').textContent = (o.numeroSequencial ? '#' + o.numeroSequencial + ' — ' : '') + `${o.nc} — ${o.cliente}`;
   const restante = Math.max(0, t.suspeita - t.inspecionada);
   document.getElementById('ap-oc-detalhe').innerHTML = `
     <div><span>Suspeita (total)</span>${t.suspeita}</div>
@@ -928,7 +935,7 @@ function editarApontamento(apontamentoId){
   if (!a) return;
   const o = minhasOcorrenciasCache.find(x => x.id === a.ocorrenciaId);
   if (!o) return;
-  const t = totaisDaOcorrencia(o.id, meusApontamentosCache);
+  const t = totaisDaOcorrencia(o.id, meusApontamentosCache, o);
   const inspecionadaOutros = t.inspecionada - a.inspecionada;
   const disponivel = Math.max(0, t.suspeita - inspecionadaOutros);
 
@@ -936,7 +943,7 @@ function editarApontamento(apontamentoId){
   modal.dataset.ocId = o.id;
   modal.dataset.editId = apontamentoId;
   modal.querySelector('h2').textContent = 'Editar Apontamento';
-  document.getElementById('ap-oc-info').textContent = `${o.nc} — ${o.cliente}`;
+  document.getElementById('ap-oc-info').textContent = (o.numeroSequencial ? '#' + o.numeroSequencial + ' — ' : '') + `${o.nc} — ${o.cliente}`;
   document.getElementById('ap-oc-detalhe').innerHTML = `
     <div><span>Suspeita (total)</span>${t.suspeita}</div>
     <div><span>Inspecionado (outros registros)</span>${inspecionadaOutros}</div>
@@ -1056,7 +1063,7 @@ function renderDashboard(){
   let totSuspeita = 0, totInsp = 0, totOk = 0, totNok = 0;
   const porFornecedor = {}, porCliente = {}, alertas = [];
   ocs.forEach(o => {
-    const t = totaisDaOcorrencia(o.id, apontamentosAdminCache);
+    const t = totaisDaOcorrencia(o.id, apontamentosAdminCache, o);
     totSuspeita += t.suspeita; totInsp += t.inspecionada; totOk += t.ok; totNok += t.nok;
     const forn = usuariosCache.find(u => u.id === o.usuarioId);
     const nomeForn = forn ? forn.nome : '—';
@@ -1102,10 +1109,10 @@ function renderOcorrenciasAdmin(){
   const ocs = ocorrenciasAdminCache.slice().sort((a, b) => fmtData(b.dataAbertura) < fmtData(a.dataAbertura) ? -1 : 1);
   tbody.innerHTML = ocs.map(o => {
     const forn = usuariosCache.find(u => u.id === o.usuarioId);
-    const t = totaisDaOcorrencia(o.id, apontamentosAdminCache);
+    const t = totaisDaOcorrencia(o.id, apontamentosAdminCache, o);
     const statusBadge = o.status === 'aberta' ? '<span class="badge badge-yellow">Aberta</span>' : '<span class="badge badge-green">Encerrada</span>';
     return `<tr>
-      <td>${o.nc}</td><td>${o.cliente}</td><td>${o.pnMrhb || '—'}</td><td>${o.pnCliente || '—'}</td><td>${o.responsavel || '—'}</td><td>${o.descricao}</td><td>${forn ? forn.nome : '—'}</td>
+      <td>${o.numeroSequencial ? '#' + o.numeroSequencial : '—'}</td><td>${o.nc}</td><td>${o.cliente}</td><td>${o.pnMrhb || '—'}</td><td>${o.pnCliente || '—'}</td><td>${o.responsavel || '—'}</td><td>${o.descricao}</td><td>${forn ? forn.nome : '—'}</td>
       <td>${fmtData(o.dataAbertura)}</td><td>${statusBadge}</td><td>${t.ultimoApontamento ? fmtDataHora(t.ultimoApontamento) : '—'}</td>
       <td>${o.status === 'aberta' ? `<button class="btn btn-secondary btn-sm" onclick="openModalEncerrar('${o.id}')">Encerrar</button>` : ''}</td>
     </tr>`;
@@ -1114,6 +1121,7 @@ function renderOcorrenciasAdmin(){
 function openModalNovaOcorrencia(){
   document.getElementById('no-nc').value = '';
   document.getElementById('no-desc').value = '';
+  document.getElementById('no-suspeita').value = '';
   document.getElementById('no-pn-mrhb').value = '';
   document.getElementById('no-pn-cliente').value = '';
   document.getElementById('no-pn-hint').style.display = 'none';
@@ -1123,12 +1131,27 @@ function openModalNovaOcorrencia(){
   // Fornecedor/Residente abrem contenção pra si mesmos — não escolhem
   // "responsável", já é implicitamente quem está logado.
   document.getElementById('no-fornecedor-wrap').style.display = currentUser.perfil === 'admin' ? '' : 'none';
+
+  // Fornecedor não trabalha com o PN interno (MRHB), só o PN do cliente —
+  // então escondemos o campo de MRHB pra ele e deixamos o PN Cliente como
+  // campo principal (com busca reversa: digitou PN Cliente, acha o MRHB).
+  const isFornecedor = currentUser.perfil === 'fornecedor';
+  document.getElementById('no-pn-mrhb-wrap').style.display = isFornecedor ? 'none' : '';
+  document.getElementById('no-pn-cliente').placeholder = isFornecedor ? 'Ex: 40117315' : 'Preenche sozinho ao digitar o PN MRHB';
+
+  // Fornecedor só abre contenção pro cliente que ele atende.
+  const clienteOptions = clientesCache.map(x => `<option value="${x}">${x}</option>`).join('');
+  if (isFornecedor && currentUser.clienteAtendido) {
+    document.getElementById('no-cliente').innerHTML = `<option value="${currentUser.clienteAtendido}">${currentUser.clienteAtendido}</option>`;
+  } else {
+    document.getElementById('no-cliente').innerHTML = clienteOptions;
+  }
+
   document.getElementById('modal-nova-ocorrencia').classList.add('open');
 }
-// Busca automática: ao digitar o PN MRHB, preenche PN Cliente + Cliente +
-// Autorizado por. Se o PN aparecer em mais de um registro do catálogo
-// (acontece em alguns casos no cadastro real), mostra as opções para
-// escolher em vez de adivinhar.
+// Busca automática (admin/residente): ao digitar o PN MRHB, preenche PN
+// Cliente + Cliente + Autorizado por. Se o PN aparecer em mais de um
+// registro do catálogo, mostra as opções para escolher em vez de adivinhar.
 function onPnMrhbInput(){
   const pn = document.getElementById('no-pn-mrhb').value.trim();
   const hint = document.getElementById('no-pn-hint');
@@ -1149,31 +1172,72 @@ function onPnMrhbInput(){
     hint.style.display = 'block';
     opcoesEl.style.display = 'block';
     opcoesEl.innerHTML = matches.map((m, i) => `<button type="button" class="btn btn-secondary btn-sm" style="margin:2px 4px 2px 0;" onclick='aplicarMatchPn(${JSON.stringify(m)})'>${m.cliente} · ${m.pnCliente}</button>`).join('');
-  } else {
-    hint.textContent = `Autorizado por: ${matches[0].responsavel || '—'}`;
+  }
+}
+// Busca reversa (fornecedor): ao digitar o PN do cliente, acha o PN MRHB
+// correspondente no catálogo — o fornecedor não precisa saber o PN interno.
+function onPnClienteInput(){
+  const pn = document.getElementById('no-pn-cliente').value.trim();
+  const hint = document.getElementById('no-pn-hint');
+  const opcoesEl = document.getElementById('no-pn-opcoes');
+  opcoesEl.style.display = 'none';
+  opcoesEl.dataset.responsavel = '';
+  if (!pn) { document.getElementById('no-pn-mrhb').value = ''; hint.style.display = 'none'; return; }
+  const matches = pnClientesCache.filter(p => p.pnCliente === pn);
+  if (!matches.length) {
+    document.getElementById('no-pn-mrhb').value = '';
+    hint.textContent = 'PN não encontrado no catálogo — a equipe de qualidade completa depois.';
     hint.style.display = 'block';
+    return;
+  }
+  aplicarMatchPn(matches[0]);
+  if (matches.length > 1) {
+    hint.textContent = `Esse PN tem ${matches.length} registros no catálogo — escolha o correto:`;
+    hint.style.display = 'block';
+    opcoesEl.style.display = 'block';
+    opcoesEl.innerHTML = matches.map((m, i) => `<button type="button" class="btn btn-secondary btn-sm" style="margin:2px 4px 2px 0;" onclick='aplicarMatchPn(${JSON.stringify(m)})'>PN MRHB ${m.pnMrhb} · ${m.cliente}</button>`).join('');
   }
 }
 function aplicarMatchPn(m){
+  document.getElementById('no-pn-mrhb').value = m.pnMrhb;
   document.getElementById('no-pn-cliente').value = m.pnCliente;
   document.getElementById('no-cliente').value = m.cliente;
   document.getElementById('no-pn-opcoes').dataset.responsavel = m.responsavel || '';
-  document.getElementById('no-pn-hint').textContent = `Autorizado por: ${m.responsavel || '—'}`;
-  document.getElementById('no-pn-hint').style.display = 'block';
+  const hint = document.getElementById('no-pn-hint');
+  hint.innerHTML = currentUser.perfil === 'fornecedor'
+    ? `PN MRHB: <b>${m.pnMrhb}</b> · Autorizado por: ${m.responsavel || '—'}`
+    : `Autorizado por: ${m.responsavel || '—'}`;
+  hint.style.display = 'block';
+}
+// Contador sequencial das ocorrências (#1, #2, #3...), independente do
+// número da NC que cada um digita. Usa uma transação pra evitar dois
+// usuários pegarem o mesmo número ao criar contenção ao mesmo tempo.
+async function proximoNumeroSequencial(){
+  const ref = db.collection('contadores').doc('ocorrencias');
+  return db.runTransaction(async (tx) => {
+    const doc = await tx.get(ref);
+    const novo = (doc.exists ? (doc.data().valor || 0) : 0) + 1;
+    tx.set(ref, { valor: novo }, { merge: true });
+    return novo;
+  });
 }
 async function salvarOcorrencia(){
   const err = document.getElementById('no-error');
   const nc = document.getElementById('no-nc').value.trim();
   const cliente = document.getElementById('no-cliente').value;
   const descricao = document.getElementById('no-desc').value.trim();
+  const suspeitaInicial = Number(document.getElementById('no-suspeita').value) || 0;
   const usuarioId = currentUser.perfil === 'admin' ? document.getElementById('no-fornecedor').value : currentUser.uid;
   const pnMrhb = document.getElementById('no-pn-mrhb').value.trim();
   const pnCliente = document.getElementById('no-pn-cliente').value.trim();
   const responsavel = document.getElementById('no-pn-opcoes').dataset.responsavel || '';
-  if (!nc || !descricao || !usuarioId) { err.textContent = 'Preencha NC, descrição e responsável.'; err.style.display = 'block'; return; }
+  if (!nc || !descricao || !usuarioId || suspeitaInicial <= 0) {
+    err.textContent = 'Preencha NC, quantidade de peças suspeitas, descrição e responsável.'; err.style.display = 'block'; return;
+  }
   err.style.display = 'none';
   try {
-    await db.collection('ocorrencias').add({ nc, cliente, descricao, pnMrhb, pnCliente, responsavel, dataAbertura: firebase.firestore.FieldValue.serverTimestamp(), usuarioId, status: 'aberta' });
+    const numeroSequencial = await proximoNumeroSequencial();
+    await db.collection('ocorrencias').add({ nc, numeroSequencial, cliente, descricao, pnMrhb, pnCliente, responsavel, suspeitaInicial, dataAbertura: firebase.firestore.FieldValue.serverTimestamp(), usuarioId, status: 'aberta' });
     closeModal('modal-nova-ocorrencia');
   } catch (e) {
     err.textContent = traduzErroFirebase(e); err.style.display = 'block';
@@ -1213,6 +1277,9 @@ async function renderAdmin(){
   const cli = document.getElementById('clientes-admin-lista');
   cli.innerHTML = clientesCache.map(c => `<span class="badge badge-gray" style="margin:2px 4px 2px 0;font-size:12px;padding:6px 10px;">${c}</span>`).join('');
 }
+function onUsPerfilChange(){
+  document.getElementById('us-cliente-wrap').style.display = document.getElementById('us-perfil').value === 'fornecedor' ? '' : 'none';
+}
 function openModalUsuario(id){
   const u = id ? usuariosCache.find(x => x.id === id) : null;
   document.getElementById('us-modal-title').textContent = u ? 'Editar Usuário' : 'Novo Usuário';
@@ -1224,6 +1291,9 @@ function openModalUsuario(id){
   document.getElementById('us-senha-wrap').style.display = u ? 'none' : '';
   document.getElementById('us-senha').value = '';
   document.getElementById('us-perfil').value = u ? u.perfil : 'fornecedor';
+  document.getElementById('us-cliente').innerHTML = '<option value="">— nenhum —</option>' + clientesCache.map(c => `<option value="${c}">${c}</option>`).join('');
+  document.getElementById('us-cliente').value = u ? (u.clienteAtendido || '') : '';
+  onUsPerfilChange();
   document.getElementById('us-ativo').checked = u ? u.ativo !== false : true;
   document.getElementById('us-error').style.display = 'none';
   document.getElementById('modal-usuario').classList.add('open');
@@ -1235,16 +1305,17 @@ async function salvarUsuario(){
   const login = document.getElementById('us-login').value.trim().toLowerCase();
   const senha = document.getElementById('us-senha').value;
   const perfil = document.getElementById('us-perfil').value;
+  const clienteAtendido = perfil === 'fornecedor' ? document.getElementById('us-cliente').value : '';
   const ativo = document.getElementById('us-ativo').checked;
   if (!nome || !login) { err.textContent = 'Preencha nome e login.'; err.style.display = 'block'; return; }
   err.style.display = 'none';
   try {
     if (id) {
-      await db.collection('usuarios').doc(id).update({ nome, perfil, ativo });
+      await db.collection('usuarios').doc(id).update({ nome, perfil, clienteAtendido, ativo });
     } else {
       if (!senha) { err.textContent = 'Defina uma senha para o novo usuário.'; err.style.display = 'block'; return; }
       const cred = await secondaryAuth.createUserWithEmailAndPassword(login + EMAIL_DOMINIO, senha);
-      await db.collection('usuarios').doc(cred.user.uid).set({ nome, login, perfil, ativo: true });
+      await db.collection('usuarios').doc(cred.user.uid).set({ nome, login, perfil, clienteAtendido, ativo: true });
       await secondaryAuth.signOut();
     }
     closeModal('modal-usuario');
