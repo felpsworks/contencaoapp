@@ -972,18 +972,14 @@ function renderMinhas(){
     const t = totaisDaOcorrencia(o.id, meusApontamentosCache, o);
     const pct = t.suspeita > 0 ? Math.min(100, Math.round(t.inspecionada / t.suspeita * 100)) : 0;
     const concluido = t.suspeita > 0 && t.inspecionada >= t.suspeita;
-    const horas = horasDesdeTs(t.ultimoApontamento);
-    const parada = !concluido && (horas === null || horas > 4);
     const inicioTs = t.primeiroApontamento || o.dataAbertura;
     const inicioMs = inicioTs && inicioTs.toMillis ? inicioTs.toMillis() : Date.now();
-    let badge = '<span class="badge badge-yellow">Em andamento</span>';
-    if (concluido) badge = '<span class="badge badge-green">100% inspecionado</span>';
-    else if (parada) badge = '<span class="badge badge-red">Sem apontamento +4h</span>';
+    const badge = concluido ? '<span class="badge badge-green">100% inspecionado</span>' : '<span class="badge badge-yellow">Em andamento</span>';
     // Residente atende todos os clientes, então pode agir em qualquer
     // contenção — não só nas que estão no nome dele.
     const podeAgir = o.usuarioId === currentUser.uid || souResidenteVendoTudo;
     const nomeForn = souResidenteVendoTudo ? (usuariosCache.find(u => u.id === o.usuarioId) || {}).nome : null;
-    return `<div class="oc-card ${parada ? 'parada' : ''}">
+    return `<div class="oc-card">
       <div class="oc-card-top">
         <div>
           <div class="oc-card-nc">${o.numeroSequencial ? `<span style="color:var(--steel);">${fmtSeq(o.numeroSequencial)}</span> ` : ''}${o.nc}</div>
