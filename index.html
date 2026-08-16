@@ -283,6 +283,22 @@
       stroke-dashoffset: 370%;
     }
   }
+
+  /* Relatório PDF (impressão) */
+  #print-area{display:none;}
+  .print-kpi-grid{display:flex;gap:10px;margin:16px 0;}
+  .print-kpi{flex:1;border:1px solid #ccc;border-radius:6px;padding:10px;text-align:center;}
+  .print-kpi b{display:block;font-size:22px;}
+  .print-kpi span{font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#666;}
+  .print-info{display:grid;grid-template-columns:1fr 1fr;gap:6px 20px;font-size:12px;margin-bottom:14px;}
+  .print-info b{font-weight:700;}
+  #print-tabela{width:100%;border-collapse:collapse;font-size:11px;}
+  #print-tabela th,#print-tabela td{border:1px solid #ccc;padding:5px 7px;text-align:left;}
+  #print-tabela th{background:#eee;}
+  @media print{
+    body > *:not(#print-area){display:none !important;}
+    #print-area{display:block !important;position:absolute;top:0;left:0;width:100%;}
+  }
 </style>
 </head>
 <body>
@@ -295,6 +311,21 @@
     </feMerge>
   </filter>
 </svg>
+
+<!-- Área usada só na hora de gerar o PDF (impressão) — fica escondida na tela normal. -->
+<div id="print-area">
+  <div style="text-align:center;margin-bottom:16px;">
+    <h1 style="font-size:20px;margin-bottom:4px;">Relatório de Contenção <span id="pr-seq"></span></h1>
+    <div id="pr-sub" style="font-size:13px;color:#555;"></div>
+  </div>
+  <div class="print-info" id="pr-info"></div>
+  <div class="print-kpi-grid" id="pr-kpis"></div>
+  <div style="font-size:12px;margin-bottom:14px;"><b>Descrição:</b> <span id="pr-desc"></span></div>
+  <table id="print-tabela">
+    <thead><tr><th>Data/Hora</th><th>Tipo</th><th>Insp.</th><th>OK</th><th>NOK</th><th>Obs.</th></tr></thead>
+    <tbody id="pr-tbody"></tbody>
+  </table>
+</div>
 
 <!-- ═══ LOGIN ═══ -->
 <div class="screen active" id="screen-login">
@@ -355,7 +386,7 @@
         <p style="font-size:12.5px;color:var(--gray-500);margin-bottom:14px;">Registre aqui, em tempo real, o resultado da inspeção de cada contenção atribuída a você. Cada apontamento fica salvo imediatamente e visível para a equipe de qualidade.</p>
         <button class="btn-101" onclick="openModalNovaOcorrencia()">
           <svg><rect></rect></svg>
-          + Adicionar Nova Contenção
+          + Nova Contenção
         </button>
       </div>
       <div class="oc-grid" id="minhas-grid"></div>
@@ -363,6 +394,16 @@
 
     <!-- HISTÓRICO -->
     <div class="tab-content" id="tab-historico">
+      <div class="card">
+        <div class="card-title">Ocorrências Encerradas</div>
+        <p style="font-size:11.5px;color:var(--gray-500);margin-bottom:10px;">Exporte o relatório em PDF de qualquer contenção já encerrada — com o histórico completo de apontamentos e os totais.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>NC</th><th>Cliente</th><th id="h-enc-th-fornecedor" style="display:none">Fornecedor</th><th>Encerrada</th><th>Insp.</th><th>OK</th><th>NOK</th><th></th></tr></thead>
+            <tbody id="h-encerradas-tbody"></tbody>
+          </table>
+        </div>
+      </div>
       <div class="card">
         <div class="card-title">Histórico de Apontamentos</div>
         <div class="filters">
@@ -621,15 +662,11 @@
         <option value="Sorting">Sorting / Seleção</option>
       </select>
     </div>
-    <div class="form-group">
-      <label>Peça / Código</label>
-      <input type="text" id="ap-peca" placeholder="Ex: 2782">
-    </div>
     <div class="form-row-4">
       <div class="form-group"><label>Qtd. Suspeita <span style="color:var(--alert)">*</span></label><input type="number" id="ap-suspeita" min="0" placeholder="0"></div>
       <div class="form-group"><label>Qtd. Inspecionada <span style="color:var(--alert)">*</span></label><input type="number" id="ap-inspecionada" min="0" placeholder="0"></div>
-      <div class="form-group"><label>Qtd. OK</label><input type="number" id="ap-ok" min="0" placeholder="0"></div>
-      <div class="form-group"><label>Qtd. NOK</label><input type="number" id="ap-nok" min="0" placeholder="0"></div>
+      <div class="form-group"><label>Qtd. OK <span style="color:var(--alert)">*</span></label><input type="number" id="ap-ok" min="0" placeholder="0"></div>
+      <div class="form-group"><label>Qtd. NOK <span style="color:var(--alert)">*</span></label><input type="number" id="ap-nok" min="0" placeholder="0"></div>
     </div>
     <div class="form-group">
       <label>Observação</label>
@@ -825,6 +862,7 @@ function configurarAbasPorPerfil(){
   document.getElementById('btn-tab-admin').style.display = isAdmin ? '' : 'none';
   document.getElementById('h-th-fornecedor').style.display = mostraFornecedor ? '' : 'none';
   document.getElementById('h-fornecedor-wrap').style.display = isAdmin ? '' : 'none';
+  document.getElementById('h-enc-th-fornecedor').style.display = mostraFornecedor ? '' : 'none';
 }
 
 function showTab(name){
@@ -993,6 +1031,7 @@ function renderMinhas(){
           <span class="timer-badge" data-inicio="${inicioMs}">${fmtDuracao(Date.now() - inicioMs)}</span>
         </div>
       </div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--gray-500);margin-bottom:3px;">Descrição</div>
       <div class="oc-card-desc">${o.descricao}</div>
       <div class="oc-progress"><div class="oc-progress-fill" style="width:${pct}%"></div></div>
       <div class="oc-card-meta">${pct}% inspecionado do total suspeito</div>
@@ -1027,16 +1066,15 @@ function openModalApontamento(ocId){
     <div><span>Suspeita (total)</span>${t.suspeita}</div>
     <div><span>Já inspecionado</span>${t.inspecionada}</div>
     <div><span>Restante</span>${restante}</div>`;
-  ['ap-peca', 'ap-suspeita', 'ap-inspecionada', 'ap-ok', 'ap-nok', 'ap-obs'].forEach(id => document.getElementById(id).value = '');
+  ['ap-suspeita', 'ap-inspecionada', 'ap-ok', 'ap-nok', 'ap-obs'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('ap-suspeita').value = t.suspeita || '';
   document.getElementById('ap-inspecionada').max = restante;
 
-  // Histórico desta contenção, mais recente primeiro — e reaproveita peça/tipo
+  // Histórico desta contenção, mais recente primeiro — e reaproveita o tipo
   // do último apontamento pra não precisar redigitar toda vez.
   const historicoOc = ordenarApontamentosDesc(meusApontamentosCache.filter(a => a.ocorrenciaId === ocId));
   const ultimo = historicoOc[0];
   if (ultimo) {
-    document.getElementById('ap-peca').value = ultimo.peca || '';
     document.getElementById('ap-tipo').value = ultimo.tipo || '100%';
   }
   const timelineWrap = document.getElementById('ap-timeline-wrap');
@@ -1072,7 +1110,6 @@ function editarApontamento(apontamentoId){
     <div><span>Inspecionado (outros registros)</span>${inspecionadaOutros}</div>
     <div><span>Disponível para este registro</span>${disponivel}</div>`;
   document.getElementById('ap-tipo').value = a.tipo || '100%';
-  document.getElementById('ap-peca').value = a.peca || '';
   document.getElementById('ap-suspeita').value = t.suspeita || '';
   document.getElementById('ap-inspecionada').value = a.inspecionada;
   document.getElementById('ap-inspecionada').max = disponivel;
@@ -1091,9 +1128,17 @@ async function salvarApontamento(){
   const err = document.getElementById('ap-error');
   const suspeita = Number(document.getElementById('ap-suspeita').value) || 0;
   const inspecionada = Number(document.getElementById('ap-inspecionada').value) || 0;
-  const ok = Number(document.getElementById('ap-ok').value) || 0;
-  const nok = Number(document.getElementById('ap-nok').value) || 0;
-  if (inspecionada <= 0 || ok + nok !== inspecionada) {
+  const okStr = document.getElementById('ap-ok').value.trim();
+  const nokStr = document.getElementById('ap-nok').value.trim();
+  if (inspecionada <= 0) {
+    err.textContent = 'Informe a quantidade inspecionada.'; err.style.display = 'block'; return;
+  }
+  if (okStr === '' || nokStr === '') {
+    err.textContent = 'Preencha as quantidades OK e NOK (pode ser 0, mas não em branco).'; err.style.display = 'block'; return;
+  }
+  const ok = Number(okStr) || 0;
+  const nok = Number(nokStr) || 0;
+  if (ok + nok !== inspecionada) {
     err.textContent = 'OK + NOK deve ser igual à quantidade inspecionada.'; err.style.display = 'block'; return;
   }
   // Soma os OUTROS apontamentos (excluindo este, se estiver editando um já existente)
@@ -1113,7 +1158,7 @@ async function salvarApontamento(){
   btn.disabled = true; btn.textContent = 'Salvando...';
   try {
     const dados = {
-      tipo: document.getElementById('ap-tipo').value, peca: document.getElementById('ap-peca').value.trim(),
+      tipo: document.getElementById('ap-tipo').value,
       suspeita, inspecionada, ok, nok, obs: document.getElementById('ap-obs').value.trim()
     };
     if (editId) {
@@ -1141,6 +1186,7 @@ async function salvarApontamento(){
 // ══════════════════════════ HISTÓRICO ══════════════════════════
 function renderHistorico(){
   if (!currentUser) return;
+  renderOcorrenciasEncerradas();
   const isAdmin = currentUser.perfil === 'admin';
   const mostraFornecedor = isAdmin || currentUser.perfil === 'residente';
   const ini = document.getElementById('h-ini').value;
@@ -1178,6 +1224,68 @@ function renderHistorico(){
       <td style="color:var(--alert);font-weight:700">${a.nok}</td>
       <td>${a.obs || ''}</td>
     </tr>`).join('');
+}
+
+// ══════════════════════════ OCORRÊNCIAS ENCERRADAS / PDF ══════════════════════════
+function renderOcorrenciasEncerradas(){
+  const isAdmin = currentUser.perfil === 'admin';
+  const mostraFornecedor = isAdmin || currentUser.perfil === 'residente';
+  const ocorrencias = isAdmin ? ocorrenciasAdminCache : minhasOcorrenciasCache;
+  const apontamentos = isAdmin ? apontamentosAdminCache : meusApontamentosCache;
+  const encerradas = ocorrencias.filter(o => o.status === 'encerrada')
+    .sort((a, b) => fmtData(b.dataAbertura) < fmtData(a.dataAbertura) ? -1 : 1);
+  const tbody = document.getElementById('h-encerradas-tbody');
+  if (!encerradas.length) { tbody.innerHTML = `<tr><td colspan="${mostraFornecedor ? 9 : 8}" class="empty">Nenhuma ocorrência encerrada ainda.</td></tr>`; return; }
+  tbody.innerHTML = encerradas.map(o => {
+    const t = totaisDaOcorrencia(o.id, apontamentos, o);
+    const forn = mostraFornecedor ? usuariosCache.find(u => u.id === o.usuarioId) : null;
+    return `<tr>
+      <td>${fmtSeq(o.numeroSequencial) || '—'}</td><td>${o.nc}</td><td>${o.cliente}</td>
+      ${mostraFornecedor ? `<td>${forn ? forn.nome : '—'}</td>` : ''}
+      <td>${fmtData(o.dataEncerramento) || '—'}</td>
+      <td>${t.inspecionada}</td>
+      <td style="color:var(--green);font-weight:700">${t.ok}</td>
+      <td style="color:var(--alert);font-weight:700">${t.nok}</td>
+      <td><button class="btn btn-secondary btn-sm" onclick="gerarPdfOcorrencia('${o.id}')">📄 PDF</button></td>
+    </tr>`;
+  }).join('');
+}
+// Monta a área de impressão com os dados dessa ocorrência e abre o
+// diálogo de impressão do navegador — o usuário escolhe "Salvar como PDF".
+function gerarPdfOcorrencia(ocId){
+  const isAdmin = currentUser.perfil === 'admin';
+  const ocorrencias = isAdmin ? ocorrenciasAdminCache : minhasOcorrenciasCache;
+  const apontamentos = isAdmin ? apontamentosAdminCache : meusApontamentosCache;
+  const o = ocorrencias.find(x => x.id === ocId);
+  if (!o) return;
+  const historico = ordenarApontamentosDesc(apontamentos.filter(a => a.ocorrenciaId === ocId));
+  const t = totaisDaOcorrencia(ocId, apontamentos, o);
+  const forn = usuariosCache.find(u => u.id === o.usuarioId);
+
+  document.getElementById('pr-seq').textContent = fmtSeq(o.numeroSequencial);
+  document.getElementById('pr-sub').textContent = `NC ${o.nc} — ${o.cliente}`;
+  document.getElementById('pr-info').innerHTML = `
+    <div><b>PN MRHB:</b> ${o.pnMrhb || '—'}</div>
+    <div><b>PN Cliente:</b> ${o.pnCliente || '—'}</div>
+    <div><b>Analista Responsável:</b> ${o.responsavel || '—'}</div>
+    <div><b>Fornecedor:</b> ${forn ? forn.nome : '—'}</div>
+    <div><b>Abertura:</b> ${fmtData(o.dataAbertura) || '—'}</div>
+    <div><b>Encerramento:</b> ${fmtData(o.dataEncerramento) || '—'}</div>`;
+  document.getElementById('pr-desc').textContent = o.descricao || '—';
+  document.getElementById('pr-kpis').innerHTML = `
+    <div class="print-kpi"><b>${t.suspeita}</b><span>Suspeita</span></div>
+    <div class="print-kpi"><b>${t.inspecionada}</b><span>Total Inspecionado</span></div>
+    <div class="print-kpi"><b>${t.ok}</b><span>Total OK</span></div>
+    <div class="print-kpi"><b>${t.nok}</b><span>Total NOK</span></div>
+    <div class="print-kpi"><b>${fmtPct(t.nok, t.inspecionada)}</b><span>Taxa de NC</span></div>`;
+  document.getElementById('pr-tbody').innerHTML = historico.length
+    ? historico.map(a => `<tr>
+        <td>${fmtDataHora(a.dataHora)}</td><td>${a.tipo || '—'}</td>
+        <td>${a.inspecionada}</td><td>${a.ok}</td><td>${a.nok}</td><td>${a.obs || ''}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="6" style="text-align:center;">Nenhum apontamento registrado.</td></tr>';
+
+  window.print();
 }
 
 // ══════════════════════════ DASHBOARD (ADMIN) ══════════════════════════
@@ -1419,7 +1527,7 @@ async function salvarOcorrencia(){
 function openModalEncerrar(id){ document.getElementById('enc-id').value = id; document.getElementById('modal-encerrar').classList.add('open'); }
 async function confirmarEncerrar(){
   const id = document.getElementById('enc-id').value;
-  await db.collection('ocorrencias').doc(id).update({ status: 'encerrada' });
+  await db.collection('ocorrencias').doc(id).update({ status: 'encerrada', dataEncerramento: firebase.firestore.FieldValue.serverTimestamp() });
   closeModal('modal-encerrar');
 }
 
