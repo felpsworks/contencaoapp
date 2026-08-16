@@ -321,7 +321,7 @@
   <div class="print-kpi-grid" id="pr-kpis"></div>
   <div style="font-size:12px;margin-bottom:14px;"><b>Descrição:</b> <span id="pr-desc"></span></div>
   <table id="print-tabela">
-    <thead><tr><th>Data/Hora</th><th>Tipo</th><th>Insp.</th><th>OK</th><th>NOK</th><th>Obs.</th></tr></thead>
+    <thead><tr><th>Data/Hora</th><th>Tipo</th><th>Insp.</th><th>OK</th><th>NOK</th><th>Responsável pelo Apontamento</th><th>Obs.</th></tr></thead>
     <tbody id="pr-tbody"></tbody>
   </table>
 </div>
@@ -415,7 +415,7 @@
           <table>
             <thead><tr>
               <th>Data/Hora</th><th>NC</th><th>Cliente</th><th id="h-th-fornecedor" style="display:none">Fornecedor</th>
-              <th>Tipo Insp.</th><th>Peça</th><th>Suspeita</th><th>Inspecionada</th><th>OK</th><th>NOK</th><th>Obs.</th>
+              <th>Tipo Insp.</th><th>Suspeita</th><th>Inspecionada</th><th>OK</th><th>NOK</th><th>Responsável pelo Apontamento</th><th>Obs.</th>
             </tr></thead>
             <tbody id="h-tbody"></tbody>
           </table>
@@ -1052,7 +1052,7 @@ function renderMinhas(){
       ${!podeAgir
         ? '<button class="btn btn-secondary btn-block" disabled>👁️ Somente visualização</button>'
         : concluido
-          ? '<button class="btn btn-secondary btn-block" disabled>✅ Concluído</button>'
+          ? `<button class="btn btn-primary btn-block" onclick="openModalEncerrar('${o.id}')">✅ Concluir</button>`
           : `<button class="btn btn-primary btn-block" onclick="openModalApontamento('${o.id}')">${t.inspecionada > 0 ? '🔄 Atualizar Apontamento' : '+ Registrar Apontamento'}</button>`}
     </div>`;
   }).join('');
@@ -1233,10 +1233,11 @@ function renderHistorico(){
   tbody.innerHTML = linhas.map(({ a, oc, fornNome }) => `<tr>
       <td>${fmtDataHora(a.dataHora)}</td><td>${oc.nc}</td><td>${oc.cliente}</td>
       ${mostraFornecedor ? `<td>${fornNome}</td>` : ''}
-      <td>${a.tipo}</td><td>${a.peca || '—'}</td>
+      <td>${a.tipo}</td>
       <td>${a.suspeita || '—'}</td><td>${a.inspecionada}</td>
       <td style="color:var(--green);font-weight:700">${a.ok}</td>
       <td style="color:var(--alert);font-weight:700">${a.nok}</td>
+      <td>${a.responsavelNome || '—'}</td>
       <td>${a.obs || ''}</td>
     </tr>`).join('');
 }
@@ -1296,9 +1297,9 @@ function gerarPdfOcorrencia(ocId){
   document.getElementById('pr-tbody').innerHTML = historico.length
     ? historico.map(a => `<tr>
         <td>${fmtDataHora(a.dataHora)}</td><td>${a.tipo || '—'}</td>
-        <td>${a.inspecionada}</td><td>${a.ok}</td><td>${a.nok}</td><td>${a.obs || ''}</td>
+        <td>${a.inspecionada}</td><td>${a.ok}</td><td>${a.nok}</td><td>${a.responsavelNome || '—'}</td><td>${a.obs || ''}</td>
       </tr>`).join('')
-    : '<tr><td colspan="6" style="text-align:center;">Nenhum apontamento registrado.</td></tr>';
+    : '<tr><td colspan="7" style="text-align:center;">Nenhum apontamento registrado.</td></tr>';
 
   window.print();
 }
