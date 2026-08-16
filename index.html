@@ -647,6 +647,10 @@
   <div class="modal">
     <h2>Registrar Apontamento</h2>
     <div class="modal-sub" id="ap-oc-info"></div>
+    <div class="form-group" id="ap-pn-select-wrap" style="display:none">
+      <label>Qual PN está sendo apontado? <span style="color:var(--alert)">*</span></label>
+      <select id="ap-pn-select" onchange="onApPnSelectChange()"></select>
+    </div>
     <div class="info-grid" id="ap-oc-detalhe"></div>
     <div id="ap-timeline-wrap" style="display:none;margin-bottom:16px;">
       <div class="card-title" style="margin-bottom:8px;padding-bottom:6px;">Histórico de atualizações</div>
@@ -689,7 +693,14 @@
     <h2>Nova Ocorrência</h2>
     <div class="modal-sub">Abertura de contenção — atribuída a um fornecedor ou ao residente.</div>
     <div class="form-row">
-      <div class="form-group"><label>Nº da NC <span style="color:var(--alert)">*</span></label><input type="text" id="no-nc" placeholder="Ex: NC-2026-0170"></div>
+      <div class="form-group">
+        <label>Nº da NC <span style="color:var(--alert)">*</span></label>
+        <input type="text" id="no-nc" placeholder="Ex: NC-2026-0170">
+        <div class="form-check" style="margin-top:6px;margin-bottom:0;">
+          <input type="checkbox" id="no-nc-pendente" onchange="onNcPendenteChange()">
+          <label for="no-nc-pendente" style="text-transform:none;font-weight:400;">Ainda sem Nº</label>
+        </div>
+      </div>
       <div class="form-group"><label>Cliente <span style="color:var(--alert)">*</span></label><select id="no-cliente" onchange="atualizarFornecedorPeloCliente(this.value)"></select></div>
     </div>
     <div class="field-hint" id="no-residente-forn-hint" style="display:none"></div>
@@ -705,7 +716,15 @@
     </div>
     <div id="no-pn-opcoes" style="display:none;margin:-10px 0 14px;"></div>
     <div class="field-hint" id="no-pn-hint" style="display:none"></div>
-    <div class="form-group"><label>Quantidade de Peças Suspeitas <span style="color:var(--alert)">*</span></label><input type="number" id="no-suspeita" min="1" placeholder="Ex: 1600"></div>
+    <div class="form-group"><label>Quantidade de Peças Suspeitas (deste PN) <span style="color:var(--alert)">*</span></label><input type="number" id="no-suspeita" min="1" placeholder="Ex: 1600"></div>
+    <div class="form-check" style="margin-top:-10px;">
+      <input type="checkbox" id="no-abrangencia" onchange="onAbrangenciaChange()">
+      <label for="no-abrangencia" style="text-transform:none;font-weight:400;">Necessário abrangência para outros PN?</label>
+    </div>
+    <div id="no-outros-pns-wrap" style="display:none;margin-bottom:16px;">
+      <div id="no-outros-pns-lista"></div>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="adicionarLinhaOutroPn()">+ Adicionar PN</button>
+    </div>
     <div class="form-group"><label>Descrição da não conformidade <span style="color:var(--alert)">*</span></label><textarea id="no-desc" rows="2"></textarea></div>
     <div class="form-group" id="no-resp-apontamento-wrap" style="display:none">
       <label>Responsável pelo Apontamento <span style="color:var(--alert)">*</span></label>
@@ -945,6 +964,12 @@ function fmtDataCurta(ts){
   const pad = n => String(n).padStart(2, '0');
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${String(d.getFullYear()).slice(-2)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
+function fmtDataBr(ts){
+  if (!ts) return '';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  const pad = n => String(n).padStart(2, '0');
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${String(d.getFullYear()).slice(-2)}`;
+}
 function fmtSeq(n){ return n ? '#' + String(n).padStart(4, '0') : ''; }
 function ordenarApontamentosDesc(lista){
   return lista.slice().sort((a, b) => (b.dataHora && b.dataHora.toMillis ? b.dataHora.toMillis() : 0) - (a.dataHora && a.dataHora.toMillis ? a.dataHora.toMillis() : 0));
@@ -956,7 +981,7 @@ function htmlTimelineApontamentos(lista, editavel){
       <div class="timeline-dot ${i === lista.length - 1 ? 'first' : ''}"></div>
       <div class="timeline-content">
         <div class="timeline-time">${fmtDataCurta(a.dataHora)}${a.registradoPor && a.registradoPor !== a.usuarioId ? ' <span class="badge badge-gray" style="font-size:9px;">residente</span>' : ''}${editavel ? ` <button type="button" class="btn-edit-timeline" onclick="event.stopPropagation();editarApontamento('${a.id}')" title="Editar este apontamento">✏️</button>` : ''}</div>
-        <div class="timeline-meta">Insp: <b>${a.inspecionada}</b> · OK: <b style="color:var(--green)">${a.ok}</b> · NOK: <b style="color:var(--alert)">${a.nok}</b>${a.responsavelNome ? ` · ${a.responsavelNome}` : ''}</div>
+        <div class="timeline-meta">${a.pnLabel ? `<b>${a.pnLabel}</b> — ` : ''}Insp: <b>${a.inspecionada}</b> · OK: <b style="color:var(--green)">${a.ok}</b> · NOK: <b style="color:var(--alert)">${a.nok}</b>${a.responsavelNome ? ` · ${a.responsavelNome}` : ''}</div>
       </div>
     </div>`).join('');
 }
@@ -965,17 +990,39 @@ function horasDesdeTs(ts){
   const d = ts.toDate ? ts.toDate() : new Date(ts);
   return (Date.now() - d.getTime()) / 3600000;
 }
+// Soma o total suspeito do PN principal + de cada PN adicional (abrangência).
+// A quantidade suspeita é sempre definida na abertura da ocorrência — os
+// apontamentos individuais nunca alteram esse total, só consomem dele.
+function suspeitaTotalDaOcorrencia(ocorrencia){
+  if (!ocorrencia) return 0;
+  return (ocorrencia.suspeitaInicial || 0) + (ocorrencia.outrosPns || []).reduce((s, p) => s + (p.suspeita || 0), 0);
+}
 function totaisDaOcorrencia(ocId, apontamentos, ocorrencia){
   const lista = apontamentos.filter(a => a.ocorrenciaId === ocId);
-  const base = { suspeita: (ocorrencia && ocorrencia.suspeitaInicial) || 0, inspecionada: 0, ok: 0, nok: 0, ultimoApontamento: null, primeiroApontamento: null };
+  const base = { suspeita: suspeitaTotalDaOcorrencia(ocorrencia), inspecionada: 0, ok: 0, nok: 0, ultimoApontamento: null, primeiroApontamento: null };
   return lista.reduce((t, a) => ({
-    suspeita: Math.max(t.suspeita, a.suspeita || 0),
+    suspeita: t.suspeita,
     inspecionada: t.inspecionada + (a.inspecionada || 0),
     ok: t.ok + (a.ok || 0),
     nok: t.nok + (a.nok || 0),
     ultimoApontamento: (!t.ultimoApontamento || (a.dataHora && a.dataHora.toMillis && a.dataHora.toMillis() > t.ultimoApontamento.toMillis())) ? a.dataHora : t.ultimoApontamento,
     primeiroApontamento: (!t.primeiroApontamento || (a.dataHora && a.dataHora.toMillis && a.dataHora.toMillis() < t.primeiroApontamento.toMillis())) ? a.dataHora : t.primeiroApontamento
   }), base);
+}
+// Totais por PN individual (usado quando a ocorrência tem abrangência de
+// mais de uma peça) — index 0 é sempre o PN principal, 1..N são outrosPns.
+function listaPnsDaOcorrencia(ocorrencia){
+  const principal = { index: 0, pnMrhb: ocorrencia.pnMrhb || '', pnCliente: ocorrencia.pnCliente || '', suspeita: ocorrencia.suspeitaInicial || 0, responsavel: ocorrencia.responsavel || '' };
+  const outros = (ocorrencia.outrosPns || []).map((p, i) => ({ index: i + 1, pnMrhb: p.pnMrhb || '', pnCliente: p.pnCliente || '', suspeita: p.suspeita || 0, responsavel: p.responsavel || '' }));
+  return [principal, ...outros];
+}
+function totaisPorPn(pnIndex, ocId, apontamentos){
+  const lista = apontamentos.filter(a => a.ocorrenciaId === ocId && (a.pnIndex || 0) === pnIndex);
+  return lista.reduce((t, a) => ({
+    inspecionada: t.inspecionada + (a.inspecionada || 0),
+    ok: t.ok + (a.ok || 0),
+    nok: t.nok + (a.nok || 0)
+  }), { inspecionada: 0, ok: 0, nok: 0 });
 }
 // Arredondar sempre pra inteiro esconde percentuais pequenos (ex: 3 NOK em
 // 845 peças = 0,35%, virava "0%" e parecia que não tinha NOK nenhum).
@@ -1059,24 +1106,62 @@ function renderMinhas(){
   garantirTimerRodando();
 }
 
+function temAbrangencia(o){ return !!(o.abrangencia && o.outrosPns && o.outrosPns.length); }
+// Recalcula "Suspeita/Já inspecionado/Restante" — por PN selecionado, se a
+// ocorrência tiver abrangência de mais de uma peça; pelo total, caso contrário.
+function atualizarDetalheApontamento(o){
+  let suspeita, inspecionada;
+  if (temAbrangencia(o)) {
+    const pnIndex = Number(document.getElementById('ap-pn-select').value) || 0;
+    const pn = listaPnsDaOcorrencia(o).find(p => p.index === pnIndex);
+    suspeita = pn ? pn.suspeita : 0;
+    inspecionada = totaisPorPn(pnIndex, o.id, meusApontamentosCache).inspecionada;
+  } else {
+    const t = totaisDaOcorrencia(o.id, meusApontamentosCache, o);
+    suspeita = t.suspeita;
+    inspecionada = t.inspecionada;
+  }
+  const restante = Math.max(0, suspeita - inspecionada);
+  document.getElementById('ap-oc-detalhe').innerHTML = `
+    <div><span>Suspeita ${temAbrangencia(o) ? '(deste PN)' : '(total)'}</span>${suspeita}</div>
+    <div><span>Já inspecionado</span>${inspecionada}</div>
+    <div><span>Restante</span>${restante}</div>`;
+  document.getElementById('ap-suspeita').value = suspeita || '';
+  document.getElementById('ap-inspecionada').max = restante;
+}
+function onApPnSelectChange(){
+  const ocId = document.getElementById('modal-apontamento').dataset.ocId;
+  const o = minhasOcorrenciasCache.find(x => x.id === ocId);
+  if (o) atualizarDetalheApontamento(o);
+}
 function openModalApontamento(ocId){
   const o = minhasOcorrenciasCache.find(x => x.id === ocId);
   if (!o) return;
   const t = totaisDaOcorrencia(o.id, meusApontamentosCache, o);
-  delete document.getElementById('modal-apontamento').dataset.editId;
+  const modal = document.getElementById('modal-apontamento');
+  delete modal.dataset.editId;
   document.getElementById('ap-btn-salvar').textContent = 'Salvar Apontamento';
-  document.getElementById('modal-apontamento').dataset.ocId = ocId;
-  document.getElementById('modal-apontamento').querySelector('h2').textContent = t.inspecionada > 0 ? 'Atualizar Apontamento' : 'Registrar Apontamento';
+  modal.dataset.ocId = ocId;
+  modal.querySelector('h2').textContent = t.inspecionada > 0 ? 'Atualizar Apontamento' : 'Registrar Apontamento';
   document.getElementById('ap-oc-info').textContent = (o.numeroSequencial ? fmtSeq(o.numeroSequencial) + ' — ' : '') + `${o.nc} — ${o.cliente}`;
-  const restante = Math.max(0, t.suspeita - t.inspecionada);
-  document.getElementById('ap-oc-detalhe').innerHTML = `
-    <div><span>Suspeita (total)</span>${t.suspeita}</div>
-    <div><span>Já inspecionado</span>${t.inspecionada}</div>
-    <div><span>Restante</span>${restante}</div>`;
-  ['ap-suspeita', 'ap-inspecionada', 'ap-ok', 'ap-nok', 'ap-obs', 'ap-resp-apontamento'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('ap-suspeita').value = t.suspeita || '';
-  document.getElementById('ap-inspecionada').max = restante;
+
+  const selectWrap = document.getElementById('ap-pn-select-wrap');
+  const select = document.getElementById('ap-pn-select');
+  select.disabled = false;
+  if (temAbrangencia(o)) {
+    select.innerHTML = listaPnsDaOcorrencia(o).map(p => {
+      const rotulo = [p.pnMrhb ? `MRHB ${p.pnMrhb}` : '', p.pnCliente ? `Cliente ${p.pnCliente}` : ''].filter(Boolean).join(' / ') || `PN #${p.index + 1}`;
+      return `<option value="${p.index}">${rotulo} — suspeita ${p.suspeita}</option>`;
+    }).join('');
+    select.value = '0';
+    selectWrap.style.display = '';
+  } else {
+    selectWrap.style.display = 'none';
+  }
+
+  ['ap-inspecionada', 'ap-ok', 'ap-nok', 'ap-obs', 'ap-resp-apontamento'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('ap-resp-apontamento-wrap').style.display = currentUser.perfil === 'fornecedor' ? '' : 'none';
+  atualizarDetalheApontamento(o);
 
   // Histórico desta contenção, mais recente primeiro — e reaproveita tipo
   // e responsável do último apontamento pra não precisar redigitar toda vez.
@@ -1095,7 +1180,7 @@ function openModalApontamento(ocId){
   }
 
   document.getElementById('ap-error').style.display = 'none';
-  document.getElementById('modal-apontamento').classList.add('open');
+  modal.classList.add('open');
 }
 // Reabre o mesmo modal em modo edição, preenchido com os valores do
 // apontamento escolhido — pra corrigir um lançamento errado sem precisar
@@ -1105,21 +1190,46 @@ function editarApontamento(apontamentoId){
   if (!a) return;
   const o = minhasOcorrenciasCache.find(x => x.id === a.ocorrenciaId);
   if (!o) return;
-  const t = totaisDaOcorrencia(o.id, meusApontamentosCache, o);
-  const inspecionadaOutros = t.inspecionada - a.inspecionada;
-  const disponivel = Math.max(0, t.suspeita - inspecionadaOutros);
+  const pnIndex = a.pnIndex || 0;
+
+  let suspeitaPn, inspecionadaOutros;
+  if (temAbrangencia(o)) {
+    const pn = listaPnsDaOcorrencia(o).find(p => p.index === pnIndex);
+    suspeitaPn = pn ? pn.suspeita : 0;
+    inspecionadaOutros = totaisPorPn(pnIndex, o.id, meusApontamentosCache).inspecionada - a.inspecionada;
+  } else {
+    const t = totaisDaOcorrencia(o.id, meusApontamentosCache, o);
+    suspeitaPn = t.suspeita;
+    inspecionadaOutros = t.inspecionada - a.inspecionada;
+  }
+  const disponivel = Math.max(0, suspeitaPn - inspecionadaOutros);
 
   const modal = document.getElementById('modal-apontamento');
   modal.dataset.ocId = o.id;
   modal.dataset.editId = apontamentoId;
   modal.querySelector('h2').textContent = 'Editar Apontamento';
   document.getElementById('ap-oc-info').textContent = (o.numeroSequencial ? fmtSeq(o.numeroSequencial) + ' — ' : '') + `${o.nc} — ${o.cliente}`;
+
+  const selectWrap = document.getElementById('ap-pn-select-wrap');
+  const select = document.getElementById('ap-pn-select');
+  if (temAbrangencia(o)) {
+    select.innerHTML = listaPnsDaOcorrencia(o).map(p => {
+      const rotulo = [p.pnMrhb ? `MRHB ${p.pnMrhb}` : '', p.pnCliente ? `Cliente ${p.pnCliente}` : ''].filter(Boolean).join(' / ') || `PN #${p.index + 1}`;
+      return `<option value="${p.index}">${rotulo} — suspeita ${p.suspeita}</option>`;
+    }).join('');
+    select.value = String(pnIndex);
+    select.disabled = true; // não dá pra trocar o PN de um apontamento já existente
+    selectWrap.style.display = '';
+  } else {
+    selectWrap.style.display = 'none';
+  }
+
   document.getElementById('ap-oc-detalhe').innerHTML = `
-    <div><span>Suspeita (total)</span>${t.suspeita}</div>
+    <div><span>Suspeita ${temAbrangencia(o) ? '(deste PN)' : '(total)'}</span>${suspeitaPn}</div>
     <div><span>Inspecionado (outros registros)</span>${inspecionadaOutros}</div>
     <div><span>Disponível para este registro</span>${disponivel}</div>`;
   document.getElementById('ap-tipo').value = a.tipo || '100%';
-  document.getElementById('ap-suspeita').value = t.suspeita || '';
+  document.getElementById('ap-suspeita').value = suspeitaPn || '';
   document.getElementById('ap-inspecionada').value = a.inspecionada;
   document.getElementById('ap-inspecionada').max = disponivel;
   document.getElementById('ap-ok').value = a.ok;
@@ -1137,6 +1247,7 @@ async function salvarApontamento(){
   const ocorrenciaId = modal.dataset.ocId;
   const editId = modal.dataset.editId || '';
   const err = document.getElementById('ap-error');
+  const o = minhasOcorrenciasCache.find(x => x.id === ocorrenciaId);
   const suspeita = Number(document.getElementById('ap-suspeita').value) || 0;
   const inspecionada = Number(document.getElementById('ap-inspecionada').value) || 0;
   const okStr = document.getElementById('ap-ok').value.trim();
@@ -1156,14 +1267,16 @@ async function salvarApontamento(){
   if (currentUser.perfil === 'fornecedor' && !responsavelNome) {
     err.textContent = 'Preencha o Responsável pelo Apontamento.'; err.style.display = 'block'; return;
   }
-  // Soma os OUTROS apontamentos (excluindo este, se estiver editando um já existente)
-  // pra validar contra o total suspeito sem contar o próprio registro duas vezes.
+  // Se a ocorrência tem abrangência de mais de um PN, a validação (e o
+  // "restante") é calculada só dentro do PN escolhido no seletor — cada PN
+  // tem sua própria cota, não compartilham a mesma quantidade suspeita.
+  const pnIndex = (o && temAbrangencia(o)) ? (Number(document.getElementById('ap-pn-select').value) || 0) : 0;
   const inspecionadaOutros = meusApontamentosCache
-    .filter(a => a.ocorrenciaId === ocorrenciaId && a.id !== editId)
+    .filter(a => a.ocorrenciaId === ocorrenciaId && a.id !== editId && (!o || !temAbrangencia(o) || (a.pnIndex || 0) === pnIndex))
     .reduce((s, a) => s + (a.inspecionada || 0), 0);
   const restante = suspeita - inspecionadaOutros;
   if (inspecionada > restante) {
-    err.textContent = `A soma das quantidades inspecionadas não pode ultrapassar o total suspeito (disponível: ${Math.max(0, restante)} peça${restante === 1 ? '' : 's'}).`;
+    err.textContent = `A soma das quantidades inspecionadas não pode ultrapassar o total suspeito${o && temAbrangencia(o) ? ' deste PN' : ''} (disponível: ${Math.max(0, restante)} peça${restante === 1 ? '' : 's'}).`;
     err.style.display = 'block';
     return;
   }
@@ -1176,6 +1289,11 @@ async function salvarApontamento(){
       tipo: document.getElementById('ap-tipo').value, responsavelNome,
       suspeita, inspecionada, ok, nok, obs: document.getElementById('ap-obs').value.trim()
     };
+    if (o && temAbrangencia(o)) {
+      dados.pnIndex = pnIndex;
+      const pn = listaPnsDaOcorrencia(o).find(p => p.index === pnIndex);
+      dados.pnLabel = pn ? [pn.pnMrhb ? `MRHB ${pn.pnMrhb}` : '', pn.pnCliente ? `Cliente ${pn.pnCliente}` : ''].filter(Boolean).join(' / ') : '';
+    }
     if (editId) {
       await db.collection('apontamentos').doc(editId).update(dados);
     } else {
@@ -1285,8 +1403,8 @@ function gerarPdfOcorrencia(ocId){
     <div><b>PN Cliente:</b> ${o.pnCliente || '—'}</div>
     <div><b>Analista Responsável:</b> ${o.responsavel || '—'}</div>
     <div><b>Fornecedor:</b> ${forn ? forn.nome : '—'}</div>
-    <div><b>Abertura:</b> ${fmtData(o.dataAbertura) || '—'}</div>
-    <div><b>Encerramento:</b> ${fmtData(o.dataEncerramento) || '—'}</div>`;
+    <div><b>Abertura:</b> ${fmtDataBr(o.dataAbertura) || '—'}</div>
+    <div><b>Encerramento:</b> ${fmtDataBr(o.dataEncerramento) || '—'}</div>`;
   document.getElementById('pr-desc').textContent = o.descricao || '—';
   document.getElementById('pr-kpis').innerHTML = `
     <div class="print-kpi"><b>${t.suspeita}</b><span>Suspeita</span></div>
@@ -1296,7 +1414,7 @@ function gerarPdfOcorrencia(ocId){
     <div class="print-kpi"><b>${fmtPct(t.nok, t.inspecionada)}</b><span>Taxa de NC</span></div>`;
   document.getElementById('pr-tbody').innerHTML = historico.length
     ? historico.map(a => `<tr>
-        <td>${fmtDataHora(a.dataHora)}</td><td>${a.tipo || '—'}</td>
+        <td>${fmtDataCurta(a.dataHora)}</td><td>${a.tipo || '—'}</td>
         <td>${a.inspecionada}</td><td>${a.ok}</td><td>${a.nok}</td><td>${a.responsavelNome || '—'}</td><td>${a.obs || ''}</td>
       </tr>`).join('')
     : '<tr><td colspan="7" style="text-align:center;">Nenhum apontamento registrado.</td></tr>';
@@ -1371,8 +1489,16 @@ function renderOcorrenciasAdmin(){
     </tr>`;
   }).join('');
 }
+function onNcPendenteChange(){
+  const pendente = document.getElementById('no-nc-pendente').checked;
+  const campo = document.getElementById('no-nc');
+  campo.disabled = pendente;
+  if (pendente) campo.value = '';
+}
 function openModalNovaOcorrencia(){
   document.getElementById('no-nc').value = '';
+  document.getElementById('no-nc').disabled = false;
+  document.getElementById('no-nc-pendente').checked = false;
   document.getElementById('no-desc').value = '';
   document.getElementById('no-suspeita').value = '';
   document.getElementById('no-resp-apontamento').value = '';
@@ -1381,6 +1507,9 @@ function openModalNovaOcorrencia(){
   document.getElementById('no-pn-hint').style.display = 'none';
   document.getElementById('no-pn-opcoes').style.display = 'none';
   document.getElementById('no-pn-opcoes').dataset.responsavel = '';
+  document.getElementById('no-abrangencia').checked = false;
+  document.getElementById('no-outros-pns-wrap').style.display = 'none';
+  document.getElementById('no-outros-pns-lista').innerHTML = '';
   document.getElementById('no-error').style.display = 'none';
   // Fornecedor/Residente abrem contenção pra si mesmos — não escolhem
   // "responsável", já é implicitamente quem está logado.
@@ -1490,6 +1619,84 @@ function aplicarMatchPn(m){
     : `Autorizado por: ${m.responsavel || '—'}`;
   hint.style.display = 'block';
 }
+
+// ══════════════════════════ ABRANGÊNCIA DE OUTROS PNs ══════════════════════════
+// Quando a mesma contenção envolve mais de uma peça, cada uma com sua
+// própria quantidade suspeita. Cada linha adicionada aqui vira um item em
+// outrosPns[] na ocorrência, e passa a exigir um seletor de PN na hora de
+// registrar apontamento (implementado em openModalApontamento).
+let outrosPnContador = 0;
+function onAbrangenciaChange(){
+  const marcado = document.getElementById('no-abrangencia').checked;
+  document.getElementById('no-outros-pns-wrap').style.display = marcado ? '' : 'none';
+  if (marcado && !document.getElementById('no-outros-pns-lista').children.length) {
+    adicionarLinhaOutroPn();
+  }
+}
+function adicionarLinhaOutroPn(){
+  outrosPnContador++;
+  const id = outrosPnContador;
+  const isFornecedor = currentUser.perfil === 'fornecedor';
+  const div = document.createElement('div');
+  div.className = 'form-row';
+  div.style.alignItems = 'start';
+  div.dataset.outroPnRow = id;
+  div.innerHTML = `
+    <div class="form-group">
+      <label>${isFornecedor ? 'PN Cliente' : 'PN MRHB'}</label>
+      <input type="text" id="op-pn-${id}" placeholder="${isFornecedor ? 'Ex: 40117315' : 'Ex: 2569'}" oninput="onOutroPnInput(${id})">
+      <div class="field-hint" id="op-hint-${id}" style="display:none;font-size:10px;margin:4px 0 0;"></div>
+    </div>
+    <div class="form-group">
+      <label>Qtd. Suspeita (deste PN)</label>
+      <div style="display:flex;gap:6px;">
+        <input type="number" id="op-suspeita-${id}" min="1" placeholder="Ex: 50" style="flex:1;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="removerLinhaOutroPn(${id})" title="Remover">✕</button>
+      </div>
+    </div>`;
+  document.getElementById('no-outros-pns-lista').appendChild(div);
+}
+function removerLinhaOutroPn(id){
+  const row = document.querySelector(`[data-outro-pn-row="${id}"]`);
+  if (row) row.remove();
+}
+function onOutroPnInput(id){
+  const isFornecedor = currentUser.perfil === 'fornecedor';
+  const row = document.querySelector(`[data-outro-pn-row="${id}"]`);
+  const valor = document.getElementById(`op-pn-${id}`).value.trim();
+  const hint = document.getElementById(`op-hint-${id}`);
+  delete row.dataset.pnMrhb; delete row.dataset.pnCliente; delete row.dataset.respAutorizado;
+  if (!valor) { hint.style.display = 'none'; return; }
+  const match = isFornecedor
+    ? pnClientesCache.find(p => p.pnCliente === valor)
+    : pnClientesCache.find(p => p.pnMrhb === valor);
+  if (match) {
+    row.dataset.pnMrhb = match.pnMrhb;
+    row.dataset.pnCliente = match.pnCliente;
+    row.dataset.respAutorizado = match.responsavel || '';
+    hint.textContent = isFornecedor ? `PN MRHB: ${match.pnMrhb} · Autorizado por: ${match.responsavel || '—'}` : `PN Cliente: ${match.pnCliente} · Autorizado por: ${match.responsavel || '—'}`;
+  } else {
+    hint.textContent = 'PN não encontrado no catálogo — vai salvar só o que foi digitado.';
+  }
+  hint.style.display = 'block';
+}
+// Junta as linhas preenchidas num array pra salvar na ocorrência.
+function coletarOutrosPns(){
+  const isFornecedor = currentUser.perfil === 'fornecedor';
+  const linhas = [...document.querySelectorAll('#no-outros-pns-lista [data-outro-pn-row]')];
+  return linhas.map(row => {
+    const id = row.dataset.outroPnRow;
+    const digitado = document.getElementById(`op-pn-${id}`).value.trim();
+    const suspeita = Number(document.getElementById(`op-suspeita-${id}`).value) || 0;
+    return {
+      pnMrhb: row.dataset.pnMrhb || (!isFornecedor ? digitado : ''),
+      pnCliente: row.dataset.pnCliente || (isFornecedor ? digitado : ''),
+      responsavel: row.dataset.respAutorizado || '',
+      suspeita
+    };
+  }).filter(p => (p.pnMrhb || p.pnCliente) && p.suspeita > 0);
+}
+
 // Contador sequencial das ocorrências (#1, #2, #3...), independente do
 // número da NC que cada um digita. Usa uma transação pra evitar dois
 // usuários pegarem o mesmo número ao criar contenção ao mesmo tempo.
@@ -1504,7 +1711,8 @@ async function proximoNumeroSequencial(){
 }
 async function salvarOcorrencia(){
   const err = document.getElementById('no-error');
-  const nc = document.getElementById('no-nc').value.trim();
+  const ncPendente = document.getElementById('no-nc-pendente').checked;
+  const nc = ncPendente ? 'PENDENTE' : document.getElementById('no-nc').value.trim();
   const cliente = document.getElementById('no-cliente').value;
   const descricao = document.getElementById('no-desc').value.trim();
   const suspeitaInicial = Number(document.getElementById('no-suspeita').value) || 0;
@@ -1537,10 +1745,17 @@ async function salvarOcorrencia(){
   if (!nc || !descricao || !usuarioId || suspeitaInicial <= 0) {
     err.textContent = 'Preencha NC, quantidade de peças suspeitas, descrição e responsável.'; err.style.display = 'block'; return;
   }
+  const abrangencia = document.getElementById('no-abrangencia').checked;
+  const outrosPns = abrangencia ? coletarOutrosPns() : [];
+  if (abrangencia && !outrosPns.length) {
+    err.textContent = 'Adicione ao menos um PN adicional (com quantidade suspeita) ou desmarque a abrangência.';
+    err.style.display = 'block';
+    return;
+  }
   err.style.display = 'none';
   try {
     const numeroSequencial = await proximoNumeroSequencial();
-    await db.collection('ocorrencias').add({ nc, numeroSequencial, cliente, descricao, pnMrhb, pnCliente, responsavel, responsavelApontamento, suspeitaInicial, dataAbertura: firebase.firestore.FieldValue.serverTimestamp(), usuarioId, status: 'aberta' });
+    await db.collection('ocorrencias').add({ nc, numeroSequencial, cliente, descricao, pnMrhb, pnCliente, responsavel, responsavelApontamento, suspeitaInicial, abrangencia, outrosPns, dataAbertura: firebase.firestore.FieldValue.serverTimestamp(), usuarioId, status: 'aberta' });
     closeModal('modal-nova-ocorrencia');
   } catch (e) {
     err.textContent = traduzErroFirebase(e); err.style.display = 'block';
