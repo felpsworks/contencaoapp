@@ -435,16 +435,11 @@
         <span class="refresh-tag" style="margin-left:auto;"><span class="refresh-dot"></span>ao vivo</span>
       </div>
       <div class="kpi-grid">
-        <div class="kpi"><div class="kpi-label">Contenções</div><div class="kpi-value" id="d-abertas">0</div></div>
+        <div class="kpi" style="cursor:pointer;" onclick="abrirDetalheContencoes()" title="Clique para ver a lista"><div class="kpi-label">Contenções</div><div class="kpi-value" id="d-abertas">0</div><div class="kpi-sub">clique para ver a lista</div></div>
         <div class="kpi yellow"><div class="kpi-label">Peças Suspeitas</div><div class="kpi-value" id="d-suspeita">0</div></div>
         <div class="kpi green"><div class="kpi-label">Peças Inspecionadas</div><div class="kpi-value" id="d-inspecionada">0</div><div class="kpi-sub" id="d-pct-insp">0% do total suspeito</div></div>
         <div class="kpi green"><div class="kpi-label">Peças OK</div><div class="kpi-value" id="d-ok-total">0</div></div>
         <div class="kpi red"><div class="kpi-label">Peças Rejeitadas (NOK)</div><div class="kpi-value" id="d-nok-total">0</div><div class="kpi-sub" id="d-taxa-nok-sub">0% das inspecionadas</div></div>
-      </div>
-
-      <div class="card" id="card-alertas">
-        <div class="card-title">⚠ Contenções sem apontamento recente (+4h)</div>
-        <div id="alertas-lista"></div>
       </div>
 
       <div class="card"><div class="card-title">Peças: Suspeita × Inspecionada × Reprovada</div><div class="hbar-chart" id="hbar-resumo"></div></div>
@@ -786,6 +781,23 @@
   </div>
 </div>
 
+<!-- MODAL: detalhe das contenções (clique no card "Contenções" do Dashboard) -->
+<div class="modal-overlay" id="modal-detalhe-contencoes">
+  <div class="modal" style="width:760px;">
+    <h2>Contenções</h2>
+    <div class="modal-sub" id="dc-sub">Conforme os filtros aplicados no Dashboard.</div>
+    <div class="table-wrap" style="max-height:60vh;overflow-y:auto;">
+      <table>
+        <thead><tr><th>#</th><th>NC</th><th>Cliente</th><th>PN</th><th>Fornecedor</th><th>Emitido por</th><th>Status</th></tr></thead>
+        <tbody id="dc-tbody"></tbody>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-detalhe-contencoes')">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
@@ -887,7 +899,9 @@ auth.onAuthStateChanged(async (user) => {
 function configurarAbasPorPerfil(){
   const isAdmin = currentUser.perfil === 'admin';
   const mostraFornecedor = isAdmin || currentUser.perfil === 'residente';
-  document.getElementById('btn-tab-minhas').style.display = isAdmin ? 'none' : '';
+  // Admin agora também vê "Contenções em Andamento", igual aos outros
+  // logins — além das abas exclusivas dele (Dashboard/Ocorrências/Admin).
+  document.getElementById('btn-tab-minhas').style.display = '';
   document.getElementById('btn-tab-dashboard').style.display = isAdmin ? '' : 'none';
   document.getElementById('btn-tab-ocorrencias').style.display = isAdmin ? '' : 'none';
   document.getElementById('btn-tab-admin').style.display = isAdmin ? '' : 'none';
@@ -900,7 +914,6 @@ function showTab(name){
   if (!currentUser) return;
   const isAdmin = currentUser.perfil === 'admin';
   if ((name === 'dashboard' || name === 'ocorrencias' || name === 'admin') && !isAdmin) return;
-  if (name === 'minhas' && isAdmin) return;
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
@@ -918,13 +931,20 @@ function showTab(name){
 // Firestore recusam qualquer consulta que tente ler além disso.
 function iniciarListeners(){
   if (currentUser.perfil === 'admin') {
+    // Admin usa os caches "Admin" (tabelas/dashboard) e também os caches
+    // "minhas"/"meus" (aba Contenções em Andamento, igual aos outros logins)
+    // — as duas vistas compartilham os mesmos dados completos.
     listenersAtivos.push(db.collection('ocorrencias').onSnapshot(snap => {
-      ocorrenciasAdminCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      renderOcorrenciasAdmin(); renderDashboard();
+      const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      ocorrenciasAdminCache = lista;
+      minhasOcorrenciasCache = lista;
+      renderOcorrenciasAdmin(); renderDashboard(); renderMinhas();
     }));
     listenersAtivos.push(db.collection('apontamentos').onSnapshot(snap => {
-      apontamentosAdminCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      renderOcorrenciasAdmin(); renderDashboard(); renderHistorico();
+      const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      apontamentosAdminCache = lista;
+      meusApontamentosCache = lista;
+      renderOcorrenciasAdmin(); renderDashboard(); renderHistorico(); renderMinhas();
     }));
   } else if (currentUser.perfil === 'residente') {
     // Residente vê TODAS as ocorrências/apontamentos (de qualquer fornecedor),
@@ -1060,11 +1080,14 @@ function garantirTimerRodando(){
 
 // ══════════════════════════ MINHAS CONTENÇÕES ══════════════════════════
 function renderMinhas(){
-  if (!currentUser || currentUser.perfil === 'admin') return;
+  if (!currentUser) return;
   const grid = document.getElementById('minhas-grid');
+  if (!document.getElementById('tab-minhas').classList.contains('active')) return;
   const ocs = minhasOcorrenciasCache.filter(o => o.status === 'aberta');
   if (!ocs.length) { grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">✅</div>Nenhuma contenção em aberto no momento.</div>'; return; }
-  const souResidenteVendoTudo = currentUser.perfil === 'residente';
+  // Residente e Admin veem o nome do fornecedor e podem agir em qualquer
+  // contenção (não só nas que estão no próprio nome).
+  const souResidenteVendoTudo = currentUser.perfil === 'residente' || currentUser.perfil === 'admin';
   grid.innerHTML = ocs.map(o => {
     const t = totaisDaOcorrencia(o.id, meusApontamentosCache, o);
     const pct = t.suspeita > 0 ? Math.min(100, Math.round(t.inspecionada / t.suspeita * 100)) : 0;
@@ -1442,6 +1465,7 @@ function limparFiltrosDashboard(){
   document.getElementById('db-pn').value = '';
   renderDashboard();
 }
+let dashboardOcsFiltradas = []; // guarda o último filtro aplicado, usado pelo card clicável "Contenções"
 function renderDashboard(){
   if (!currentUser || currentUser.perfil !== 'admin') return;
   const ini = document.getElementById('db-ini').value;
@@ -1459,9 +1483,10 @@ function renderDashboard(){
   if (cliSel) ocs = ocs.filter(o => o.cliente === cliSel);
   if (fornSel) ocs = ocs.filter(o => o.usuarioId === fornSel);
   if (pnSel) ocs = ocs.filter(o => pnBateOcorrencia(o, pnSel));
+  dashboardOcsFiltradas = ocs;
 
   let totSuspeita = 0, totInsp = 0, totOk = 0, totNok = 0;
-  const porFornecedor = {}, porCliente = {}, alertas = [];
+  const porFornecedor = {}, porCliente = {};
   ocs.forEach(o => {
     const t = totaisDaOcorrencia(o.id, apontamentosAdminCache, o);
     totSuspeita += t.suspeita; totInsp += t.inspecionada; totOk += t.ok; totNok += t.nok;
@@ -1469,10 +1494,6 @@ function renderDashboard(){
     const nomeForn = forn ? forn.nome : '—';
     porFornecedor[nomeForn] = (porFornecedor[nomeForn] || 0) + t.inspecionada;
     porCliente[o.cliente] = (porCliente[o.cliente] || 0) + t.suspeita;
-    if (o.status === 'aberta') {
-      const horas = horasDesdeTs(t.ultimoApontamento);
-      if (horas === null || horas > 4) alertas.push({ nc: o.nc, cliente: o.cliente, fornecedor: nomeForn, horas });
-    }
   });
 
   document.getElementById('d-abertas').textContent = ocs.length;
@@ -1483,14 +1504,9 @@ function renderDashboard(){
   document.getElementById('d-nok-total').textContent = totNok;
   document.getElementById('d-taxa-nok-sub').textContent = fmtPct(totNok, totInsp) + ' das inspecionadas';
 
-  const alertasEl = document.getElementById('alertas-lista');
-  alertasEl.innerHTML = !alertas.length
-    ? '<div class="empty" style="padding:16px;">Nenhuma contenção parada — tudo em dia.</div>'
-    : alertas.map(a => `<div class="alert-item"><span><b>${a.nc}</b> — ${a.cliente} · ${a.fornecedor}</span><span class="alert-item-time">${a.horas == null ? 'sem apontamento ainda' : a.horas.toFixed(1) + 'h sem apontamento'}</span></div>`).join('');
-
   renderHbar('hbar-resumo', { 'Suspeita': totSuspeita, 'Inspecionada': totInsp, 'Reprovada (NOK)': totNok });
   renderHbar('hbar-fornecedor', porFornecedor);
-  renderHbar('hbar-cliente', porCliente);
+  renderDonut('hbar-cliente', porCliente);
 }
 function renderHbar(elId, dataObj){
   const el = document.getElementById(elId);
@@ -1503,6 +1519,55 @@ function renderHbar(elId, dataObj){
       <div class="hbar-track"><div class="hbar-fill" style="width:${Math.round(val / max * 100)}%"></div></div>
       <div class="hbar-value">${val}</div>
     </div>`).join('');
+}
+const DONUT_CORES = ['#1B3A5C', '#3B7CA8', '#8E5FD1', '#1A7A3C', '#E8A93B', '#C0392B', '#0F7A6C', '#6B3FA0'];
+function renderDonut(elId, dataObj){
+  const el = document.getElementById(elId);
+  const entries = Object.entries(dataObj || {}).filter(([, v]) => v > 0);
+  if (!entries.length) { el.innerHTML = '<div class="empty" style="padding:16px;">Sem dados.</div>'; return; }
+  const total = entries.reduce((s, [, v]) => s + v, 0);
+  const raio = 60, espessura = 26, circunferencia = 2 * Math.PI * raio;
+  let acumulado = 0;
+  const fatias = entries.map(([, val], i) => {
+    const comprimento = (val / total) * circunferencia;
+    const svg = `<circle cx="80" cy="80" r="${raio}" fill="none" stroke="${DONUT_CORES[i % DONUT_CORES.length]}" stroke-width="${espessura}" stroke-dasharray="${comprimento} ${circunferencia - comprimento}" stroke-dashoffset="${-acumulado}" transform="rotate(-90 80 80)"></circle>`;
+    acumulado += comprimento;
+    return svg;
+  }).join('');
+  const legenda = entries.map(([label, val], i) => `
+    <div style="display:flex;align-items:center;gap:7px;font-size:12.5px;margin-bottom:6px;">
+      <span style="width:11px;height:11px;border-radius:3px;background:${DONUT_CORES[i % DONUT_CORES.length]};flex:none;"></span>
+      <span style="flex:1;color:var(--gray-700);">${label}</span>
+      <b>${val}</b>
+      <span style="color:var(--gray-500);font-size:11px;width:38px;text-align:right;">${fmtPct(val, total)}</span>
+    </div>`).join('');
+  el.innerHTML = `
+    <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">
+      <svg width="160" height="160" viewBox="0 0 160 160" style="flex:none;">${fatias}
+        <text x="80" y="76" text-anchor="middle" font-size="20" font-weight="800" fill="var(--black)">${total}</text>
+        <text x="80" y="94" text-anchor="middle" font-size="9" fill="var(--gray-500)">PEÇAS</text>
+      </svg>
+      <div style="flex:1;min-width:150px;">${legenda}</div>
+    </div>`;
+}
+// Mostra a lista das contenções que compõem o número do card "Contenções"
+// (respeitando os filtros atuais do Dashboard): quem emitiu, cliente e PN.
+function abrirDetalheContencoes(){
+  const ocs = dashboardOcsFiltradas.slice().sort((a, b) => fmtData(b.dataAbertura) < fmtData(a.dataAbertura) ? -1 : 1);
+  document.getElementById('dc-sub').textContent = `${ocs.length} contenção${ocs.length === 1 ? '' : 'ões'} conforme os filtros aplicados no Dashboard.`;
+  document.getElementById('dc-tbody').innerHTML = !ocs.length
+    ? '<tr><td colspan="7" class="empty">Nenhuma contenção encontrada.</td></tr>'
+    : ocs.map(o => {
+        const forn = usuariosCache.find(u => u.id === o.usuarioId);
+        const emissor = usuariosCache.find(u => u.id === o.criadoPor);
+        const pn = [o.pnMrhb, o.pnCliente].filter(Boolean).join(' / ') || '—';
+        const statusBadge = o.status === 'aberta' ? '<span class="badge badge-yellow">Aberta</span>' : '<span class="badge badge-green">Encerrada</span>';
+        return `<tr>
+          <td>${fmtSeq(o.numeroSequencial) || '—'}</td><td>${o.nc}</td><td>${o.cliente}</td><td>${pn}</td>
+          <td>${forn ? forn.nome : '—'}</td><td>${emissor ? emissor.nome : '—'}</td><td>${statusBadge}</td>
+        </tr>`;
+      }).join('');
+  document.getElementById('modal-detalhe-contencoes').classList.add('open');
 }
 
 // ══════════════════════════ OCORRÊNCIAS (ADMIN) ══════════════════════════
@@ -1787,7 +1852,7 @@ async function salvarOcorrencia(){
   err.style.display = 'none';
   try {
     const numeroSequencial = await proximoNumeroSequencial();
-    await db.collection('ocorrencias').add({ nc, numeroSequencial, cliente, descricao, pnMrhb, pnCliente, responsavel, responsavelApontamento, suspeitaInicial, abrangencia, outrosPns, dataAbertura: firebase.firestore.FieldValue.serverTimestamp(), usuarioId, status: 'aberta' });
+    await db.collection('ocorrencias').add({ nc, numeroSequencial, cliente, descricao, pnMrhb, pnCliente, responsavel, responsavelApontamento, suspeitaInicial, abrangencia, outrosPns, dataAbertura: firebase.firestore.FieldValue.serverTimestamp(), usuarioId, criadoPor: currentUser.uid, status: 'aberta' });
     closeModal('modal-nova-ocorrencia');
   } catch (e) {
     err.textContent = traduzErroFirebase(e); err.style.display = 'block';
