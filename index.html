@@ -866,8 +866,28 @@ async function fazerLogin(){
 }
 function logout(){ auth.signOut(); }
 
+function limparCachesDeSessao(){
+  // Troca de usuário na MESMA aba (logout + login sem recarregar a página):
+  // os listeners antigos são cancelados aqui, mas os caches compartilhados
+  // (minhasOcorrenciasCache etc.) só seriam sobrescritos quando o snapshot
+  // do NOVO usuário chegasse — e isso é assíncrono. Sem esse reset, a
+  // primeira renderização depois do login usa o cache do usuário anterior
+  // por um instante, o que pode mostrar contenção de outro fornecedor.
+  // Por isso limpamos tudo de forma síncrona, antes de qualquer render.
+  minhasOcorrenciasCache = [];
+  meusApontamentosCache = [];
+  ocorrenciasAdminCache = [];
+  apontamentosAdminCache = [];
+  usuariosCache = [];
+  fornecedoresCache = [];
+  clientesCache = [];
+  pnClientesCache = [];
+  if (typeof dashboardOcsFiltradas !== 'undefined') dashboardOcsFiltradas = [];
+}
+
 auth.onAuthStateChanged(async (user) => {
   pararListeners();
+  limparCachesDeSessao();
   if (!user) {
     currentUser = null;
     document.getElementById('screen-app').classList.remove('active');
