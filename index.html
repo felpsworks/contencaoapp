@@ -426,15 +426,20 @@
     <!-- DASHBOARD (admin) -->
     <div class="tab-content" id="tab-dashboard">
       <div class="filters">
+        <div class="filter-group"><span class="filter-label">De</span><input type="date" id="db-ini" onchange="renderDashboard()"></div>
+        <div class="filter-group"><span class="filter-label">Até</span><input type="date" id="db-fim" onchange="renderDashboard()"></div>
         <div class="filter-group"><span class="filter-label">Cliente</span><select id="db-cliente" onchange="renderDashboard()"><option value="">Todos</option></select></div>
         <div class="filter-group"><span class="filter-label">Fornecedor</span><select id="db-fornecedor" onchange="renderDashboard()"><option value="">Todos</option></select></div>
+        <div class="filter-group"><span class="filter-label">PN</span><input type="text" id="db-pn" placeholder="MRHB ou Cliente" oninput="renderDashboard()"></div>
+        <button class="btn btn-secondary btn-sm" onclick="limparFiltrosDashboard()">Limpar filtros</button>
         <span class="refresh-tag" style="margin-left:auto;"><span class="refresh-dot"></span>ao vivo</span>
       </div>
       <div class="kpi-grid">
-        <div class="kpi"><div class="kpi-label">Ocorrências Abertas</div><div class="kpi-value" id="d-abertas">0</div></div>
-        <div class="kpi yellow"><div class="kpi-label">Peças Suspeitas (total)</div><div class="kpi-value" id="d-suspeita">0</div></div>
+        <div class="kpi"><div class="kpi-label">Contenções</div><div class="kpi-value" id="d-abertas">0</div></div>
+        <div class="kpi yellow"><div class="kpi-label">Peças Suspeitas</div><div class="kpi-value" id="d-suspeita">0</div></div>
         <div class="kpi green"><div class="kpi-label">Peças Inspecionadas</div><div class="kpi-value" id="d-inspecionada">0</div><div class="kpi-sub" id="d-pct-insp">0% do total suspeito</div></div>
-        <div class="kpi red"><div class="kpi-label">Peças Reprovadas (NOK)</div><div class="kpi-value" id="d-nok-total">0</div><div class="kpi-sub" id="d-taxa-nok-sub">0% das inspecionadas</div></div>
+        <div class="kpi green"><div class="kpi-label">Peças OK</div><div class="kpi-value" id="d-ok-total">0</div></div>
+        <div class="kpi red"><div class="kpi-label">Peças Rejeitadas (NOK)</div><div class="kpi-value" id="d-nok-total">0</div><div class="kpi-sub" id="d-taxa-nok-sub">0% das inspecionadas</div></div>
       </div>
 
       <div class="card" id="card-alertas">
@@ -1423,13 +1428,37 @@ function gerarPdfOcorrencia(ocId){
 }
 
 // ══════════════════════════ DASHBOARD (ADMIN) ══════════════════════════
+// Procura o termo digitado no PN principal e em qualquer PN adicional
+// (abrangência) da ocorrência — busca simples, sem diferenciar maiúsculas.
+function pnBateOcorrencia(o, termo){
+  const campos = [o.pnMrhb, o.pnCliente, ...(o.outrosPns || []).flatMap(p => [p.pnMrhb, p.pnCliente])];
+  return campos.some(v => v && String(v).toLowerCase().includes(termo));
+}
+function limparFiltrosDashboard(){
+  document.getElementById('db-ini').value = '';
+  document.getElementById('db-fim').value = '';
+  document.getElementById('db-cliente').value = '';
+  document.getElementById('db-fornecedor').value = '';
+  document.getElementById('db-pn').value = '';
+  renderDashboard();
+}
 function renderDashboard(){
   if (!currentUser || currentUser.perfil !== 'admin') return;
+  const ini = document.getElementById('db-ini').value;
+  const fim = document.getElementById('db-fim').value;
   const cliSel = document.getElementById('db-cliente').value;
   const fornSel = document.getElementById('db-fornecedor').value;
-  let ocs = ocorrenciasAdminCache.filter(o => o.status === 'aberta');
+  const pnSel = document.getElementById('db-pn').value.trim().toLowerCase();
+
+  // Diferente da tela "Minhas Contenções" (só abertas), o Dashboard mostra
+  // a atividade do PERÍODO inteiro — inclui contenções já encerradas que
+  // caíram dentro do filtro de datas.
+  let ocs = ocorrenciasAdminCache.slice();
+  if (ini) ocs = ocs.filter(o => fmtData(o.dataAbertura) >= ini);
+  if (fim) ocs = ocs.filter(o => fmtData(o.dataAbertura) <= fim);
   if (cliSel) ocs = ocs.filter(o => o.cliente === cliSel);
   if (fornSel) ocs = ocs.filter(o => o.usuarioId === fornSel);
+  if (pnSel) ocs = ocs.filter(o => pnBateOcorrencia(o, pnSel));
 
   let totSuspeita = 0, totInsp = 0, totOk = 0, totNok = 0;
   const porFornecedor = {}, porCliente = {}, alertas = [];
@@ -1440,14 +1469,17 @@ function renderDashboard(){
     const nomeForn = forn ? forn.nome : '—';
     porFornecedor[nomeForn] = (porFornecedor[nomeForn] || 0) + t.inspecionada;
     porCliente[o.cliente] = (porCliente[o.cliente] || 0) + t.suspeita;
-    const horas = horasDesdeTs(t.ultimoApontamento);
-    if (horas === null || horas > 4) alertas.push({ nc: o.nc, cliente: o.cliente, fornecedor: nomeForn, horas });
+    if (o.status === 'aberta') {
+      const horas = horasDesdeTs(t.ultimoApontamento);
+      if (horas === null || horas > 4) alertas.push({ nc: o.nc, cliente: o.cliente, fornecedor: nomeForn, horas });
+    }
   });
 
   document.getElementById('d-abertas').textContent = ocs.length;
   document.getElementById('d-suspeita').textContent = totSuspeita;
   document.getElementById('d-inspecionada').textContent = totInsp;
   document.getElementById('d-pct-insp').textContent = fmtPct(totInsp, totSuspeita) + ' do total suspeito';
+  document.getElementById('d-ok-total').textContent = totOk;
   document.getElementById('d-nok-total').textContent = totNok;
   document.getElementById('d-taxa-nok-sub').textContent = fmtPct(totNok, totInsp) + ' das inspecionadas';
 
